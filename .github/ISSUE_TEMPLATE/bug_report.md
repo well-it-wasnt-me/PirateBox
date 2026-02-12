@@ -1,4 +1,11 @@
-# Issue Report
+---
+name: Bug report
+about: If you really have to..
+title: ''
+labels: ''
+assignees: ''
+
+---
 
 ## What happened?
 
