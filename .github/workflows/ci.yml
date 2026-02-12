@@ -1,0 +1,115 @@
+# PirateBox CI: separate the critical work so failures don't hide in the crowd.
+name: PirateBox CI
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Ruff
+        run: ruff check .
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Pytest
+        run: pytest
+
+  semver:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    if: github.ref == 'refs/heads/main'
+    outputs:
+      released: ${{ steps.release.outputs.released }}
+      tag: ${{ steps.release.outputs.tag }}
+      commit_sha: ${{ steps.release.outputs.commit_sha }}
+    steps:
+      - name: Checkout (full history for tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Semantic Release
+        id: release
+        uses: python-semantic-release/python-semantic-release@v10.5.3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          git_committer_name: "github-actions[bot]"
+          git_committer_email: "41898282+github-actions[bot]@users.noreply.github.com"
+
+  image:
+    name: Image Creation
+    runs-on: ubuntu-latest
+    needs: [semver]
+    if: needs.semver.outputs.released == 'true'
+    steps:
+      - name: Checkout (release commit)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.semver.outputs.commit_sha }}
+          fetch-depth: 0
+
+      - name: Install image tools
+        run: sudo apt-get update && sudo apt-get install -y xz-utils rsync
+
+      - name: Build Raspberry Pi image
+        run: ./scripts/build_rpi_image.sh
+
+      - name: Upload image to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.semver.outputs.tag }}
+          files: dist/piratebox-raspios-lite.img.xz
+
+  wiki:
+    name: Wiki to gh-pages
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish wiki
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: wiki
+          publish_branch: gh-pages

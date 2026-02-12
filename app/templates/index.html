@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{# Home page template: the welcome mat and the warning label. #}
+{% set title = "Console" %}
+
+{% block content %}
+<section class="hero">
+  <div class="hero-copy">
+    <div class="eyebrow">LOCAL NET // NO CLOUD // NO EXCUSES</div>
+    <h1>Welcome to the offline side.</h1>
+    <p class="lead">
+      PirateBox is a local-only dead drop. Upload files, grab files, talk to
+      whoever is nearby. Nothing leaves this network. The internet does not
+      even get a postcard.
+    </p>
+    <div class="hero-actions">
+      <a class="button primary" href="/files">Open the vault</a>
+      <a class="button ghost" href="/chat">Enter the chat</a>
+    </div>
+    <div class="chip-row">
+      <span class="chip">No login</span>
+      <span class="chip">No tracking</span>
+      <span class="chip">No backups</span>
+    </div>
+  </div>
+  <div class="hero-terminal">
+    <div class="terminal-title">SYSTEM STATUS</div>
+    <div class="terminal-line"><span>Wi-Fi:</span> open like a diner at 3am</div>
+    <div class="terminal-line"><span>Storage:</span> shared, chaotic, yours now</div>
+    <div class="terminal-line"><span>Chat:</span> anonymous and unmoderated</div>
+    <div class="terminal-line"><span>Forum:</span> long-form complaining</div>
+    <div class="terminal-line"><span>Internet:</span> missing on purpose</div>
+  </div>
+</section>
+
+<section class="cards">
+  <article class="card">
+    <h2>Files</h2>
+    <p>Drop whatever you want. The only audit trail is regret.</p>
+    <a class="link" href="/files">Browse the stash</a>
+  </article>
+  <article class="card">
+    <h2>Chat</h2>
+    <p>Say it quick, say it loud, and move along before it gets weird.</p>
+    <a class="link" href="/chat">Open the channel</a>
+  </article>
+  <article class="card">
+    <h2>Forum</h2>
+    <p>For plans, rants, and the occasional useful idea.</p>
+    <a class="link" href="/forum">Read the threads</a>
+  </article>
+</section>
+{% endblock %}

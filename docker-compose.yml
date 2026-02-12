@@ -1,0 +1,18 @@
+# PirateBox compose file: one container, zero excuses.
+version: "3.8"
+
+services:
+  piratebox:
+    build: .
+    image: piratebox:local
+    container_name: piratebox
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      PIRATEBOX_NAME: "PirateBox"
+      PIRATEBOX_DB_PATH: "/data/piratebox.db"
+      PIRATEBOX_FILES_DIR: "/data/files"
+      PIRATEBOX_MAX_UPLOAD_MB: "512"
+    volumes:
+      - ./data:/data

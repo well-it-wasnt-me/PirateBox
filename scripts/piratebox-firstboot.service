@@ -1,0 +1,15 @@
+# PirateBox first boot unit.
+# Runs once, sets up dependencies, then gets out of the way.
+[Unit]
+Description=PirateBox first boot provisioning
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=!/var/lib/piratebox/.firstboot_done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/piratebox-firstboot
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

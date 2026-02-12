@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{# Forum list template: a bulletin board with less moderation. #}
+{% set title = "Forum" %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <h1>Forum</h1>
+    <p class="muted">Longer messages for people who refuse to let it go.</p>
+  </div>
+  <form class="thread-form" action="/forum" method="post">
+    <div class="form-row">
+      <input type="text" name="title" placeholder="Thread title" maxlength="120" required>
+      <input type="text" name="nickname" placeholder="Nickname" maxlength="32">
+    </div>
+    <textarea name="message" rows="4" placeholder="Start the rant" maxlength="500" required></textarea>
+    <button class="button primary" type="submit">Start it</button>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <h2>Latest threads</h2>
+  </div>
+  {% if threads %}
+  <div class="thread-list">
+    {% for thread in threads %}
+    <a class="thread" href="/forum/{{ thread.id }}">
+      <div>
+        <div class="thread-title">{{ thread.title }}</div>
+        <div class="thread-meta">Started by {{ thread.nickname }} · {{ thread.created_at | prettytime }}</div>
+      </div>
+      <div class="thread-count">{{ thread.post_count }} posts</div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty">No threads yet. Somebody light the fuse.</div>
+  {% endif %}
+</section>
+{% endblock %}

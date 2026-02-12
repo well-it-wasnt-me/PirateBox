@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{# Captive portal acknowledgment: a cookie for your compliance. #}
+{% block content %}
+<section class="panel captive-card">
+  <p class="eyebrow">ALL SET</p>
+  <h1>Opening {{ app_name }}...</h1>
+  <p class="lead">
+    This window should close and the main UI should open. If it does not, tap the button below.
+  </p>
+  <div class="captive-actions">
+    <a class="button primary" href="{{ next_url }}">Open PirateBox</a>
+  </div>
+</section>
+<script>
+  (function () {
+    const target = "{{ next_url }}";
+    try {
+      window.open(target, "_blank");
+    } catch (err) {
+      // popup blockers do not care about your dreams
+    }
+    window.location.href = target;
+    window.setTimeout(() => {
+      try {
+        window.close();
+      } catch (err) {
+        // if it stays open, so be it
+      }
+    }, 800);
+  })();
+</script>
+{% endblock %}

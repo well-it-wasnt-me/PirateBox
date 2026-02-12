@@ -1,0 +1,40 @@
+<!-- Base layout for PirateBox pages: same neon glow, different problems. -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ app_name }}{% if title %} | {{ title }}{% endif %}</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <div class="scanlines"></div>
+    <div class="noise"></div>
+    <header class="site-header">
+      <div class="brand">
+        <picture class="brand-logo">
+          <source srcset="/static/images/PirateBox-logo.svg" type="image/svg+xml">
+          <img src="/static/images/PirateBoxLogo2.png" alt="PirateBox logo">
+        </picture>
+        <div class="brand-text">
+          <div class="brand-name">{{ app_name }}</div>
+          <div class="brand-tagline">Offline dropbox for people who hate the cloud.</div>
+        </div>
+      </div>
+      <nav class="nav">
+        <a class="nav-link {% if request.url.path == '/' %}active{% endif %}" href="/">Console</a>
+        <a class="nav-link {% if request.url.path.startswith('/files') %}active{% endif %}" href="/files">Files</a>
+        <a class="nav-link {% if request.url.path.startswith('/chat') %}active{% endif %}" href="/chat">Chat</a>
+        <a class="nav-link {% if request.url.path.startswith('/forum') %}active{% endif %}" href="/forum">Forum</a>
+      </nav>
+    </header>
+    <main class="content">
+      {% block content %}{% endblock %}
+    </main>
+    <footer class="footer">
+      <div>Local only. The internet can mind its own business.</div>
+      <div class="footer-small">PirateBox runs on Raspberry Pi 5 + Python + SQLite.</div>
+    </footer>
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>

@@ -1,0 +1,18 @@
+# PirateBox systemd unit for the web app.
+# Boots the box without hand-holding or optimism.
+[Unit]
+Description=PirateBox web service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/piratebox
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/etc/default/piratebox
+ExecStart=/opt/piratebox/.venv/bin/python /opt/piratebox/app/main.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,18 @@
+# PirateBox e-Paper systemd unit.
+# Keep the paper awake so it can report that nothing is on fire.
+[Unit]
+Description=PirateBox e-Paper status display
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/piratebox
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/etc/default/piratebox-epaper
+ExecStart=/opt/piratebox/.venv/bin/python /opt/piratebox/scripts/epaper_hat.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{# Captive portal template: the handshake before the party. #}
+{% block content %}
+<section class="panel captive-card">
+  <p class="eyebrow">LOCAL CONNECTION</p>
+  <h1>Welcome to {{ app_name }}</h1>
+  <p class="lead">
+    You are on a local-only PirateBox. No internet, no tracking, just files and chatter on this network.
+    For a better experience connect to http://10.0.0.1/
+  </p>
+  <div class="captive-actions">
+    <a class="button primary" href="/captive/ack">OK, UNDERSTOOD</a>
+  </div>
+  <ul class="captive-list">
+    <li>Share files, chat, or post on the forum.</li>
+    <li>This network does not provide internet access.</li>
+    <li>If you leave, the connection is gone. So are the excuses.</li>
+  </ul>
+</section>
+{% endblock %}

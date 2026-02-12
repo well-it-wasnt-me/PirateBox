@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{# Files page template: upload, download, and shrug. #}
+{% set title = "Files" %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <h1>File vault</h1>
+    <p class="muted">Max {{ max_upload_mb }} MB. If it breaks, it was probably your file.</p>
+  </div>
+  <form class="upload" action="/files/upload" method="post" enctype="multipart/form-data">
+    <input class="file-input" type="file" name="file" required>
+    <button class="button primary" type="submit">Send it</button>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <h2>Available files</h2>
+    <p class="muted">Newest first. Downloads stay on this box, unlike your attention span.</p>
+  </div>
+  {% if files %}
+  <div class="table">
+    <div class="table-row table-head">
+      <div>Name</div>
+      <div>Size</div>
+      <div>Uploaded</div>
+      <div></div>
+    </div>
+    {% for file in files %}
+    <div class="table-row">
+      <div class="truncate" title="{{ file.original_name }}">{{ file.original_name }}</div>
+      <div>{{ file.size_bytes | filesize }}</div>
+      <div>{{ file.uploaded_at | prettytime }}</div>
+      <div>
+        <a class="button ghost" href="/files/{{ file.id }}/download">Download</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty">No files yet. Someone has to start the chaos.</div>
+  {% endif %}
+</section>
+{% endblock %}

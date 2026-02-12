@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{# Thread template: where opinions go to echo. #}
+{% set title = thread.title %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <h1>{{ thread.title }}</h1>
+    <p class="muted">Started by {{ thread.nickname }} · {{ thread.created_at | prettytime }}</p>
+  </div>
+  <div class="posts">
+    {% for post in posts %}
+    <article class="post">
+      <div class="post-meta">
+        <span class="post-nick">{{ post.nickname }}</span>
+        <span class="post-time">{{ post.created_at | prettytime }}</span>
+      </div>
+      <div class="post-body">{{ post.message }}</div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <h2>Reply</h2>
+    <p class="muted">Be kind. Or at least be brief.</p>
+  </div>
+  <form class="thread-form" action="/forum/{{ thread.id }}/reply" method="post">
+    <div class="form-row">
+      <input type="text" name="nickname" placeholder="Nickname" maxlength="32">
+    </div>
+    <textarea name="message" rows="4" placeholder="Drop your wisdom" maxlength="500" required></textarea>
+    <button class="button primary" type="submit">Post reply</button>
+  </form>
+</section>
+{% endblock %}

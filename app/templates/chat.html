@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{# Chat template: the digital equivalent of yelling across a room. #}
+{% set title = "Chat" %}
+
+{% block content %}
+<section class="panel chat-panel">
+  <div class="panel-header">
+    <h1>Shoutbox</h1>
+    <p class="muted">Anonymous. Ephemeral. Probably ill-advised.</p>
+  </div>
+  <div class="chat-window">
+    <ul id="chat-messages" data-last-id="{{ last_id }}">
+      {% for msg in messages %}
+      <li>
+        <span class="chat-nick">{{ msg.nickname }}</span>
+        <span class="chat-time">{{ msg.created_at | prettytime }}</span>
+        <div class="chat-text">{{ msg.message }}</div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  <form id="chat-form" class="chat-form">
+    <input id="chat-nickname" type="text" name="nickname" placeholder="Nickname (optional)" maxlength="32">
+    <input id="chat-message" type="text" name="message" placeholder="Say something reckless" maxlength="500" required>
+    <button class="button primary" type="submit">Transmit</button>
+  </form>
+</section>
+{% endblock %}
