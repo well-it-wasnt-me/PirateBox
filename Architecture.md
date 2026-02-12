@@ -14,7 +14,7 @@ PirateBox is small on purpose. It is a FastAPI app with SQLite storage, a few te
 - `app/static/` holds CSS, JS, and images.
 - `scripts/` contains setup scripts and systemd unit files.
 - `tests/` contains pytest suites.
-- `docs/` contains operational notes.
+- `docs/` contains project documentation (published to GitHub Pages).
 
 ## Request flow
 
