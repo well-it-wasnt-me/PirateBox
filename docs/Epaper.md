@@ -1,10 +1,14 @@
-# Optional e-Paper HAT status display
+---
+title: E-Paper HAT
+---
 
-This module drives the 2.7 inch e-Paper HAT (264x176, Rev 2.1) and shows the PirateBox logo plus local stats (CPU, temp, disk, etc.). It also supports four buttons if you wire them and configure GPIO pins.
+# E-Paper HAT
+
+PirateBox can drive a 2.7 inch e-Paper HAT (264x176, Rev 2.1) to show the PirateBox logo plus local stats (CPU, temp, disk, IP, counts). It also supports four hardware buttons if you wire them and configure GPIO pins.
 
 ## Hardware notes
 
-- Enable SPI on the Pi (`raspi-config` → Interface Options → SPI).
+- Enable SPI on the Pi (`raspi-config` -> Interface Options -> SPI).
 - The HAT connects via SPI and is powered from the Pi header.
 - The display resolution is 264x176.
 
@@ -31,14 +35,6 @@ pip install -r requirements-epaper.txt
 If GPIO libraries fail to import on Python 3.13, use the system Python (3.11/3.12) or a venv based on it.
 On Raspberry Pi 5, `RPi.GPIO` often fails; install `python3-rpi-lgpio` (or `pip install rpi-lgpio`) so the Waveshare driver can import `RPi.GPIO` via the lgpio backend.
 
-### Troubleshooting: “Cannot determine SOC peripheral base address”
-
-This usually means the GPIO library cannot read the Pi’s device tree or `RPi.GPIO` doesn’t support the Pi model:
-
-- Ensure you’re running on the **host Pi OS**, not inside a container.
-- Use system Python (3.11/3.12) with `python3-rpi-lgpio` and `python3-spidev`.
-- Confirm `/proc/device-tree` exists and SPI is enabled (`sudo raspi-config`).
-
 ## Run
 
 ```bash
@@ -50,8 +46,11 @@ Driver preference can be forced with `--driver waveshare_epd` or `PIRATEBOX_EPD_
 If the Waveshare library is installed, the script tries `epd2in7` first, then `epd2in7_V2`.
 Override with `PIRATEBOX_EPD_WAVESHARE_MODULE=epd2in7_V2` (or `epd2in7`) if your panel needs it.
 You can also set `PIRATEBOX_EPD_FONT=/path/to/font.ttf` to use a specific TTF font.
+
+## Refresh behavior
+
 For smoother updates, the script uses partial refresh when the driver supports it and triggers
-a full refresh every `PIRATEBOX_EPD_FULL_REFRESH_EVERY` loops (set to `0` to disable).
+full refresh every `PIRATEBOX_EPD_FULL_REFRESH_EVERY` loops (set to `0` to disable).
 If partial refresh is not available, you can reduce flashing by enabling refresh-on-change.
 
 Refresh-on-change defaults:
@@ -125,6 +124,20 @@ sudo systemctl enable --now piratebox-epaper.service
 systemctl status piratebox-epaper.service
 journalctl -u piratebox-epaper.service -f
 ```
+
+## Troubleshooting
+
+### "Cannot determine SOC peripheral base address"
+
+This usually means the GPIO library cannot read the Pi's device tree or `RPi.GPIO` does not support the Pi model:
+
+- Ensure you're running on the host Pi OS, not inside a container.
+- Use system Python (3.11/3.12) with `python3-rpi-lgpio` and `python3-spidev`.
+- Confirm `/proc/device-tree` exists and SPI is enabled (`sudo raspi-config`).
+
+### Debugging
+
+Run with `--debug` and watch for driver selection logs. If nothing shows up, the driver did not load. That is not a mystery, it is a missing dependency.
 
 ## Data sources
 

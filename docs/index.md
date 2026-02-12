@@ -1,8 +1,8 @@
 ---
-title: PirateBox Wiki
+title: PirateBox Docs
 ---
 
-# PirateBox Wiki
+# PirateBox Docs
 
 PirateBox is a local-only sharing box for Raspberry Pi. You join an open Wi-Fi, hit a local web page, and trade files, chat messages, or forum threads without the internet meddling in your business. It is a small rebellion against the cloud, and like most rebellions, it is mostly paperwork.
 

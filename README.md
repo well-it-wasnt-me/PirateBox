@@ -52,16 +52,16 @@ pytest
 
 ## Raspberry Pi 5 setup
 
-See `docs/pi-setup.md` for the Wi-Fi access point configuration and offline-only networking steps.
+See `docs/Install-Raspberry-Pi.md` for the Wi-Fi access point configuration and offline-only networking steps.
 If you prefer a prebuilt image, the build script is in `scripts/build_rpi_image.sh`, and CI produces an `.img.xz` artifact.
 
-## Wiki
+## Docs
 
-Detailed docs live under `wiki/` and are published to GitHub Pages by CI.
+Detailed docs live under `docs/` and are published to GitHub Pages by CI.
 
 ## Optional e-Paper HAT status display
 
-See `docs/epaper-hat.md` for the 2.7 inch e-Paper HAT module (logo + stats + buttons).
+See `docs/Epaper.md` for the 2.7 inch e-Paper HAT module (logo + stats + buttons).
 
 ## Configuration
 
