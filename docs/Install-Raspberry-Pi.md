@@ -1,7 +1,3 @@
----
-title: Install on Raspberry Pi
----
-
 # Install on Raspberry Pi
 
 This guide assumes Raspberry Pi OS Lite (64-bit) and works well on Raspberry Pi 5. The goal is an open Wi-Fi access point that keeps traffic local and points clients to PirateBox.

@@ -1,7 +1,3 @@
----
-title: Prebuilt Image
----
-
 # Prebuilt Image
 
 PirateBox can be shipped as a Raspberry Pi OS image that runs a first-boot installer and starts the service automatically. It is the closest thing to a one-click install that does not require belief in magic.

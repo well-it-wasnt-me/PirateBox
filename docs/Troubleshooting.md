@@ -1,7 +1,3 @@
----
-title: Troubleshooting
----
-
 # Troubleshooting
 
 Things fail. PirateBox is honest about it. Here are the common ones.

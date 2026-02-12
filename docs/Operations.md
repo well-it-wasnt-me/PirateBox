@@ -1,7 +1,3 @@
----
-title: Operations
----
-
 # Operations
 
 PirateBox is simple, but it still needs the usual sysadmin rituals: start, stop, check logs, and back things up before they vanish.

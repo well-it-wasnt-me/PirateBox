@@ -1,7 +1,3 @@
----
-title: E-Paper HAT
----
-
 # E-Paper HAT
 
 PirateBox can drive a 2.7 inch e-Paper HAT (264x176, Rev 2.1) to show the PirateBox logo plus local stats (CPU, temp, disk, IP, counts). It also supports four hardware buttons if you wire them and configure GPIO pins.

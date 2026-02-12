@@ -1,7 +1,3 @@
----
-title: Development
----
-
 # Development
 
 PirateBox is a small FastAPI app. Development is straightforward, which is a rare kindness.

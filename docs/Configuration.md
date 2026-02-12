@@ -1,7 +1,3 @@
----
-title: Configuration
----
-
 # Configuration
 
 PirateBox is configured with environment variables. You can set them in your shell, in `/etc/default/piratebox`, or in Docker Compose. Choose your preferred flavor of control.

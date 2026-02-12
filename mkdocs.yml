@@ -1,0 +1,35 @@
+site_name: PirateBox
+site_description: Offline-first sharing box for Raspberry Pi
+repo_name: PirateBox v2
+repo_url: https://github.com/well-it-wasnt-me/PirateBox
+theme:
+  name: readthedocs
+
+nav:
+  - Home: index.md
+  - Overview: Overview.md
+  - Install on Raspberry Pi: Install-Raspberry-Pi.md
+  - Prebuilt Image: Prebuilt-Image.md
+  - Architecture: Architecture.md
+  - Configuration: Configuration.md
+  - Operations: Operations.md
+  - Troubleshooting: Troubleshooting.md
+  - E-Paper HAT: Epaper.md
+  - Development: Development.md
+  - FAQ: FAQ.md
+
+plugins:
+  - search
+
+extra_css:
+  - stylesheets/extra.css
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - md_in_html
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - toc:
+      permalink: true
+  - tables

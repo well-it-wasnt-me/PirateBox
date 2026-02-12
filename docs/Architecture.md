@@ -1,7 +1,3 @@
----
-title: Architecture
----
-
 # Architecture
 
 PirateBox is small on purpose. It is a FastAPI app with SQLite storage, a few templates, and some scripts to make Raspberry Pi behave. That is the whole magic trick.

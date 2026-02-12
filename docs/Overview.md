@@ -1,7 +1,3 @@
----
-title: Overview
----
-
 # Overview
 
 PirateBox is a local-only sharing box for Raspberry Pi. It sets up an open Wi-Fi network and hosts a FastAPI web app that lets people exchange files, chat messages, and forum posts. Everything stays on the device. No cloud, no account system, no sense of permanence beyond a microSD card.
