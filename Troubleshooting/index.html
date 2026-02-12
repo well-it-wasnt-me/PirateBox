@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Troubleshooting - PirateBox</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../stylesheets/extra.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Troubleshooting";
+        var mkdocs_page_input_path = "Troubleshooting.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> PirateBox
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Overview/">Overview</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Install-Raspberry-Pi/">Install on Raspberry Pi</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Prebuilt-Image/">Prebuilt Image</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Architecture/">Architecture</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Configuration/">Configuration</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Operations/">Operations</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Troubleshooting</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#the-wi-fi-network-does-not-show-up">The Wi-Fi network does not show up</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#captive-portal-does-not-appear">Captive portal does not appear</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#dns-redirects-do-not-work">DNS redirects do not work</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#piratebox-service-does-not-start">PirateBox service does not start</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#first-boot-image-never-starts-piratebox">First-boot image never starts PirateBox</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#file-uploads-fail">File uploads fail</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#chat-messages-do-not-appear">Chat messages do not appear</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#the-e-paper-display-is-blank">The e-Paper display is blank</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#you-want-it-online">You want it online</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Epaper/">E-Paper HAT</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Development/">Development</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../FAQ/">FAQ</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">PirateBox</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Troubleshooting</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/well-it-wasnt-me/PirateBox/edit/master/docs/Troubleshooting.md">Edit on PirateBox v2</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h1>
+<p>Things fail. PirateBox is honest about it. Here are the common ones.</p>
+<h2 id="the-wi-fi-network-does-not-show-up">The Wi-Fi network does not show up<a class="headerlink" href="#the-wi-fi-network-does-not-show-up" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Check that <code>hostapd</code> is running: <code>systemctl status hostapd</code>.</li>
+<li>Confirm the Wi-Fi interface name with <code>ip -br link</code>.</li>
+<li>If you use a USB adapter, ensure it supports AP mode with <code>iw list</code>.</li>
+</ul>
+<h2 id="captive-portal-does-not-appear">Captive portal does not appear<a class="headerlink" href="#captive-portal-does-not-appear" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Manually browse to <code>http://10.0.0.1:8080</code>.</li>
+<li>Some devices cache captive portal results. Toggle Wi-Fi or reboot the device.</li>
+<li>If you want captive portal detection to work better, run the app on port 80.</li>
+</ul>
+<h2 id="dns-redirects-do-not-work">DNS redirects do not work<a class="headerlink" href="#dns-redirects-do-not-work" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Verify <code>dnsmasq</code> is running: <code>systemctl status dnsmasq</code>.</li>
+<li>Check <code>/etc/dnsmasq.d/piratebox.conf</code> for typos.</li>
+<li>Make sure <code>address=/#/10.0.0.1</code> is present.</li>
+</ul>
+<h2 id="piratebox-service-does-not-start">PirateBox service does not start<a class="headerlink" href="#piratebox-service-does-not-start" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>systemctl status piratebox.service</code> for logs.</li>
+<li>If you use the systemd unit, ensure <code>/opt/piratebox/.venv</code> exists.</li>
+<li>Reinstall dependencies with <code>/opt/piratebox/.venv/bin/pip install -r requirements.txt</code>.</li>
+</ul>
+<h2 id="first-boot-image-never-starts-piratebox">First-boot image never starts PirateBox<a class="headerlink" href="#first-boot-image-never-starts-piratebox" title="Permanent link">&para;</a></h2>
+<ul>
+<li>First boot needs temporary internet access to install Python packages.</li>
+<li>Check <code>/var/log/piratebox-firstboot.log</code> for errors.</li>
+<li>Re-run first boot:</li>
+</ul>
+<pre class="highlight"><code class="language-bash">sudo rm -f /var/lib/piratebox/.firstboot_done
+sudo systemctl start piratebox-firstboot.service</code></pre>
+<h2 id="file-uploads-fail">File uploads fail<a class="headerlink" href="#file-uploads-fail" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Check <code>PIRATEBOX_MAX_UPLOAD_MB</code>.</li>
+<li>Confirm free disk space with <code>df -h</code>.</li>
+<li>Verify <code>PIRATEBOX_FILES_DIR</code> exists and is writable.</li>
+</ul>
+<h2 id="chat-messages-do-not-appear">Chat messages do not appear<a class="headerlink" href="#chat-messages-do-not-appear" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Make sure you are not blocked by the browser cache.</li>
+<li>Check the API endpoint directly: <code>http://10.0.0.1:8080/api/chat/messages</code>.</li>
+<li>Look for errors in the app logs.</li>
+</ul>
+<h2 id="the-e-paper-display-is-blank">The e-Paper display is blank<a class="headerlink" href="#the-e-paper-display-is-blank" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Confirm SPI is enabled in <code>raspi-config</code>.</li>
+<li>Run the script manually: <code>sudo ./scripts/epaper_hat.py --debug</code>.</li>
+<li>Install GPIO libraries: <code>sudo apt install python3-rpi-lgpio python3-spidev</code>.</li>
+</ul>
+<h2 id="you-want-it-online">You want it online<a class="headerlink" href="#you-want-it-online" title="Permanent link">&para;</a></h2>
+<p>This is an offline-first project. If you must add internet, do so knowingly and accept that it defeats the point.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../Operations/" class="btn btn-neutral float-left" title="Operations"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../Epaper/" class="btn btn-neutral float-right" title="E-Paper HAT">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/well-it-wasnt-me/PirateBox" class="fa fa-code-fork" style="color: #fcfcfc"> PirateBox v2</a>
+        </span>
+    
+    
+      <span><a href="../Operations/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../Epaper/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

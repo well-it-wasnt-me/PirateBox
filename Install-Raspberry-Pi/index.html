@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Install on Raspberry Pi - PirateBox</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../stylesheets/extra.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Install on Raspberry Pi";
+        var mkdocs_page_input_path = "Install-Raspberry-Pi.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> PirateBox
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Overview/">Overview</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Install on Raspberry Pi</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#before-you-start">Before you start</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#quick-script-optional">Quick script (optional)</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#step-1-flash-the-os">Step 1: Flash the OS</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#step-2-update-packages">Step 2: Update packages</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#step-3-install-piratebox">Step 3: Install PirateBox</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#option-a-docker">Option A: Docker</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#option-b-systemd-venv">Option B: systemd + venv</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#step-4-configure-the-access-point">Step 4: Configure the access point</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#using-an-external-usb-wi-fi-adapter">Using an external USB Wi-Fi adapter</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#manual-steps">Manual steps</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#step-5-keep-it-offline">Step 5: Keep it offline</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#step-6-start-services">Step 6: Start services</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#step-7-run-piratebox">Step 7: Run PirateBox</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#step-8-test">Step 8: Test</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#optional-prebuilt-image">Optional: Prebuilt image</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#optional-set-environment-defaults">Optional: Set environment defaults</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#notes">Notes</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Prebuilt-Image/">Prebuilt Image</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Architecture/">Architecture</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Configuration/">Configuration</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Operations/">Operations</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Troubleshooting/">Troubleshooting</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Epaper/">E-Paper HAT</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Development/">Development</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../FAQ/">FAQ</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">PirateBox</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Install on Raspberry Pi</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/well-it-wasnt-me/PirateBox/edit/master/docs/Install-Raspberry-Pi.md">Edit on PirateBox v2</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="install-on-raspberry-pi">Install on Raspberry Pi<a class="headerlink" href="#install-on-raspberry-pi" title="Permanent link">&para;</a></h1>
+<p>This guide assumes Raspberry Pi OS Lite (64-bit) and works well on Raspberry Pi 5. The goal is an open Wi-Fi access point that keeps traffic local and points clients to PirateBox.</p>
+<h2 id="before-you-start">Before you start<a class="headerlink" href="#before-you-start" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Use a decent power supply. Random phone chargers have a habit of lying.</li>
+<li>Have a keyboard and monitor, or enable SSH during imaging.</li>
+<li>Decide if you want to run via Docker or systemd. Docker is convenient. Systemd is honest.</li>
+</ul>
+<h2 id="quick-script-optional">Quick script (optional)<a class="headerlink" href="#quick-script-optional" title="Permanent link">&para;</a></h2>
+<p>Run the setup script to apply the access point and offline steps automatically:</p>
+<pre class="highlight"><code class="language-bash">sudo ./scripts/pi-setup.sh --iface wlan0</code></pre>
+<p>To run Docker Compose at the end:</p>
+<pre class="highlight"><code class="language-bash">sudo ./scripts/pi-setup.sh --iface wlan0 --run-compose</code></pre>
+<p>If you use the script, it handles the hostapd/dnsmasq config, static IP, and offline rules. You can skip to the test section.</p>
+<h2 id="step-1-flash-the-os">Step 1: Flash the OS<a class="headerlink" href="#step-1-flash-the-os" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Download Raspberry Pi OS Lite (64-bit).</li>
+<li>Flash it to a microSD card using Raspberry Pi Imager or Balena Etcher.</li>
+<li>If you want SSH, enable it in the Imager settings.</li>
+<li>Boot the Pi and log in.</li>
+</ol>
+<h2 id="step-2-update-packages">Step 2: Update packages<a class="headerlink" href="#step-2-update-packages" title="Permanent link">&para;</a></h2>
+<pre class="highlight"><code class="language-bash">sudo apt update
+sudo apt upgrade -y</code></pre>
+<h2 id="step-3-install-piratebox">Step 3: Install PirateBox<a class="headerlink" href="#step-3-install-piratebox" title="Permanent link">&para;</a></h2>
+<h3 id="option-a-docker">Option A: Docker<a class="headerlink" href="#option-a-docker" title="Permanent link">&para;</a></h3>
+<pre class="highlight"><code class="language-bash">sudo apt install -y docker.io docker-compose-plugin
+sudo systemctl enable --now docker</code></pre>
+<p>Clone the repo and start the stack:</p>
+<pre class="highlight"><code class="language-bash">git clone https://github.com/your-org/piratebox.git
+cd piratebox
+docker compose up -d --build</code></pre>
+<p>The web app will be available at <code>http://10.0.0.1:8080</code> when the AP is up.
+If you want the app on port 80 for captive portals, change <code>docker-compose.yml</code> to <code>"80:8080"</code>.
+The app serves a small captive portal welcome page at <code>/captive</code> and redirects common OS connectivity checks there.
+The OK button sets the device as acknowledged and attempts to open the main UI.</p>
+<h3 id="option-b-systemd-venv">Option B: systemd + venv<a class="headerlink" href="#option-b-systemd-venv" title="Permanent link">&para;</a></h3>
+<pre class="highlight"><code class="language-bash">sudo apt install -y python3-venv python3-pip</code></pre>
+<pre class="highlight"><code class="language-bash">git clone https://github.com/your-org/piratebox.git
+cd piratebox
+python3 -m venv /opt/piratebox/.venv
+/opt/piratebox/.venv/bin/pip install -r requirements.txt</code></pre>
+<p>Install the unit file:</p>
+<pre class="highlight"><code class="language-bash">sudo cp ./scripts/piratebox.service /etc/systemd/system/piratebox.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now piratebox.service</code></pre>
+<h2 id="step-4-configure-the-access-point">Step 4: Configure the access point<a class="headerlink" href="#step-4-configure-the-access-point" title="Permanent link">&para;</a></h2>
+<p>You can run the helper script or configure manually. The script is faster and less educational.</p>
+<h3 id="using-an-external-usb-wi-fi-adapter">Using an external USB Wi-Fi adapter<a class="headerlink" href="#using-an-external-usb-wi-fi-adapter" title="Permanent link">&para;</a></h3>
+<p>If you want the PirateBox access point to run on a USB Wi-Fi adapter, identify the adapter interface name and use it everywhere instead of <code>wlan0</code>.</p>
+<p>Find the interface name:</p>
+<pre class="highlight"><code class="language-bash">ip -br link
+iw dev</code></pre>
+<p>Common names are <code>wlan1</code> or <code>wlan2</code>. In the steps below, replace <code>wlan0</code> with your adapter interface (for example, <code>wlan1</code>).</p>
+<p>Notes:</p>
+<ul>
+<li>Make sure the adapter supports AP mode (<code>iw list</code> shows <code>AP</code> under "Supported interface modes").</li>
+<li>You can keep the built-in Wi-Fi (<code>wlan0</code>) for admin access or leave it unused.</li>
+</ul>
+<h3 id="manual-steps">Manual steps<a class="headerlink" href="#manual-steps" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Install packages:</li>
+</ol>
+<pre class="highlight"><code class="language-bash">sudo apt install -y hostapd dnsmasq
+sudo systemctl unmask hostapd</code></pre>
+<ol>
+<li>Give <code>wlan0</code> a static IP using your networking stack:</li>
+</ol>
+<p>Option A (dhcpcd, common on Lite):</p>
+<pre class="highlight"><code class="language-bash">sudo tee -a /etc/dhcpcd.conf &gt;/dev/null &lt;&lt;'EOF'
+# PirateBox static IP
+interface wlan0
+static ip_address=10.0.0.1/24
+nohook wpa_supplicant
+EOF
+sudo systemctl restart dhcpcd</code></pre>
+<p>Option B (NetworkManager):</p>
+<pre class="highlight"><code class="language-bash">sudo nmcli dev set wlan0 managed yes
+sudo nmcli con add type wifi ifname wlan0 con-name piratebox-ap autoconnect yes ssid PirateBox
+sudo nmcli con modify piratebox-ap ipv4.addresses 10.0.0.1/24 ipv4.method manual</code></pre>
+<ol>
+<li>Configure hostapd:</li>
+</ol>
+<pre class="highlight"><code class="language-bash">sudo tee /etc/hostapd/hostapd.conf &gt;/dev/null &lt;&lt;'EOF'
+interface=wlan0
+driver=nl80211
+ssid=PirateBox
+hw_mode=g
+channel=6
+auth_algs=1
+wpa=0
+wmm_enabled=0
+ignore_broadcast_ssid=0
+EOF</code></pre>
+<pre class="highlight"><code class="language-bash">sudo tee /etc/default/hostapd &gt;/dev/null &lt;&lt;'EOF'
+DAEMON_CONF="/etc/hostapd/hostapd.conf"
+EOF</code></pre>
+<ol>
+<li>Configure dnsmasq:</li>
+</ol>
+<pre class="highlight"><code class="language-bash">sudo tee /etc/dnsmasq.d/piratebox.conf &gt;/dev/null &lt;&lt;'EOF'
+interface=wlan0
+dhcp-range=10.0.0.10,10.0.0.200,255.255.255.0,12h
+dhcp-option=option:router,10.0.0.1
+dhcp-option=option:dns-server,10.0.0.1
+address=/#/10.0.0.1
+EOF</code></pre>
+<h2 id="step-5-keep-it-offline">Step 5: Keep it offline<a class="headerlink" href="#step-5-keep-it-offline" title="Permanent link">&para;</a></h2>
+<p>Make sure the access point does not forward traffic to the internet:</p>
+<pre class="highlight"><code class="language-bash">sudo sh -c 'printf "net.ipv4.ip_forward=0\n" &gt; /etc/sysctl.d/99-piratebox.conf'
+sudo sysctl -p /etc/sysctl.d/99-piratebox.conf</code></pre>
+<p>If the Pi has an ethernet uplink, block forwarding from Wi-Fi:</p>
+<pre class="highlight"><code class="language-bash">sudo iptables -A FORWARD -i wlan0 -o eth0 -j DROP
+sudo iptables -A FORWARD -i eth0 -o wlan0 -j DROP</code></pre>
+<p>(Optional) Persist iptables using <code>iptables-persistent</code>.</p>
+<h2 id="step-6-start-services">Step 6: Start services<a class="headerlink" href="#step-6-start-services" title="Permanent link">&para;</a></h2>
+<pre class="highlight"><code class="language-bash">sudo systemctl enable --now hostapd dnsmasq</code></pre>
+<h2 id="step-7-run-piratebox">Step 7: Run PirateBox<a class="headerlink" href="#step-7-run-piratebox" title="Permanent link">&para;</a></h2>
+<p>If you are using Docker, start the stack (or re-run after changing ports):</p>
+<pre class="highlight"><code class="language-bash">docker compose up -d --build</code></pre>
+<p>If you are using systemd, confirm the service is enabled and running:</p>
+<pre class="highlight"><code class="language-bash">sudo systemctl status piratebox.service</code></pre>
+<h2 id="step-8-test">Step 8: Test<a class="headerlink" href="#step-8-test" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Connect a phone or laptop to the PirateBox Wi-Fi.</li>
+<li>Open a browser. A captive portal welcome page should appear; tap OK to enter.</li>
+<li>Upload a file, post a chat message, and create a forum thread.</li>
+</ol>
+<h2 id="optional-prebuilt-image">Optional: Prebuilt image<a class="headerlink" href="#optional-prebuilt-image" title="Permanent link">&para;</a></h2>
+<p>If you want an image that boots and installs PirateBox on first startup, see <code>Prebuilt-Image.md</code> or build it yourself:</p>
+<pre class="highlight"><code class="language-bash">./scripts/build_rpi_image.sh</code></pre>
+<p>The image includes a first-boot systemd unit that installs Python deps and enables <code>piratebox.service</code>.
+It assumes temporary internet access on first boot to pull Python packages, then you can unplug it.</p>
+<h2 id="optional-set-environment-defaults">Optional: Set environment defaults<a class="headerlink" href="#optional-set-environment-defaults" title="Permanent link">&para;</a></h2>
+<pre class="highlight"><code class="language-bash">sudo tee /etc/default/piratebox &gt;/dev/null &lt;&lt;'EOF'
+PIRATEBOX_NAME=PirateBox
+PIRATEBOX_DATA_DIR=/var/lib/piratebox/data
+PIRATEBOX_DB_PATH=/var/lib/piratebox/data/piratebox.db
+PIRATEBOX_FILES_DIR=/var/lib/piratebox/data/files
+PIRATEBOX_MAX_UPLOAD_MB=512
+EOF</code></pre>
+<h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
+<ul>
+<li>For captive portal friendliness, running on port 80 helps. <code>app/main.py</code> uses port 80 by default when started directly.</li>
+<li>If you change the SSID or subnet, update the docs and your expectations.</li>
+<li>If you use a different Pi OS networking stack, adjust the Wi-Fi static IP steps accordingly.</li>
+<li>The Pi is the single point of failure. Keep a spare SD card if you want to sleep at night.</li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../Overview/" class="btn btn-neutral float-left" title="Overview"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../Prebuilt-Image/" class="btn btn-neutral float-right" title="Prebuilt Image">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/well-it-wasnt-me/PirateBox" class="fa fa-code-fork" style="color: #fcfcfc"> PirateBox v2</a>
+        </span>
+    
+    
+      <span><a href="../Overview/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../Prebuilt-Image/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

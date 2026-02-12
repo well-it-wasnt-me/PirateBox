@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Prebuilt Image - PirateBox</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../stylesheets/extra.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Prebuilt Image";
+        var mkdocs_page_input_path = "Prebuilt-Image.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> PirateBox
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Overview/">Overview</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Install-Raspberry-Pi/">Install on Raspberry Pi</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Prebuilt Image</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#what-the-image-includes">What the image includes</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#where-to-get-it">Where to get it</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#build-it-yourself">Build it yourself</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#build-script-knobs">Build script knobs</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#first-boot-behavior">First boot behavior</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#temporary-internet-requirement">Temporary internet requirement</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#customize-defaults-before-first-boot">Customize defaults before first boot</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#re-run-first-boot">Re-run first boot</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Architecture/">Architecture</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Configuration/">Configuration</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Operations/">Operations</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Troubleshooting/">Troubleshooting</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Epaper/">E-Paper HAT</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Development/">Development</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../FAQ/">FAQ</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">PirateBox</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Prebuilt Image</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/well-it-wasnt-me/PirateBox/edit/master/docs/Prebuilt-Image.md">Edit on PirateBox v2</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="prebuilt-image">Prebuilt Image<a class="headerlink" href="#prebuilt-image" title="Permanent link">&para;</a></h1>
+<p>PirateBox can be shipped as a Raspberry Pi OS image that runs a first-boot installer and starts the service automatically. It is the closest thing to a one-click install that does not require belief in magic.</p>
+<h2 id="what-the-image-includes">What the image includes<a class="headerlink" href="#what-the-image-includes" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Official Raspberry Pi OS Lite (64-bit) base image.</li>
+<li>PirateBox source under <code>/opt/piratebox</code>.</li>
+<li>A first-boot systemd unit that installs Python dependencies and enables the service.</li>
+<li>Default environment values in <code>/etc/default/piratebox</code>.</li>
+</ul>
+<h2 id="where-to-get-it">Where to get it<a class="headerlink" href="#where-to-get-it" title="Permanent link">&para;</a></h2>
+<ul>
+<li>CI builds an <code>.img.xz</code> artifact when the workflow runs.</li>
+<li>You can build locally using <code>scripts/build_rpi_image.sh</code>.</li>
+</ul>
+<h2 id="build-it-yourself">Build it yourself<a class="headerlink" href="#build-it-yourself" title="Permanent link">&para;</a></h2>
+<pre class="highlight"><code class="language-bash">./scripts/build_rpi_image.sh</code></pre>
+<p>The script will:</p>
+<ol>
+<li>Download the official Raspberry Pi OS Lite image.</li>
+<li>Mount the partitions.</li>
+<li>Copy the PirateBox repo into <code>/opt/piratebox</code>.</li>
+<li>Install the first-boot unit and environment defaults.</li>
+<li>Repack the image as <code>piratebox-raspios-lite.img.xz</code>.</li>
+</ol>
+<h2 id="build-script-knobs">Build script knobs<a class="headerlink" href="#build-script-knobs" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>PIRATEBOX_RPI_IMAGE_URL</code> to override the official image URL.</li>
+<li><code>PIRATEBOX_IMAGE_OUTDIR</code> to change the output directory.</li>
+<li><code>PIRATEBOX_IMAGE_WORKDIR</code> to change the scratch space.</li>
+<li><code>PIRATEBOX_IMAGE_KEEP_WORKDIR=1</code> to keep the scratch space for debugging.</li>
+</ul>
+<h2 id="first-boot-behavior">First boot behavior<a class="headerlink" href="#first-boot-behavior" title="Permanent link">&para;</a></h2>
+<p>The image runs <code>/usr/local/sbin/piratebox-firstboot</code> on the first boot. It will:</p>
+<ul>
+<li>Install <code>python3-venv</code> and <code>python3-pip</code>.</li>
+<li>Create a venv at <code>/opt/piratebox/.venv</code>.</li>
+<li>Install Python requirements.</li>
+<li>Enable and start <code>piratebox.service</code>.</li>
+</ul>
+<h2 id="temporary-internet-requirement">Temporary internet requirement<a class="headerlink" href="#temporary-internet-requirement" title="Permanent link">&para;</a></h2>
+<p>The first boot needs temporary internet access to install Python packages. After that, you can keep the network offline. If you boot without internet, the service will not start until you rerun the first-boot script or provide the packages manually. That is not a bug, it is physics.</p>
+<h2 id="customize-defaults-before-first-boot">Customize defaults before first boot<a class="headerlink" href="#customize-defaults-before-first-boot" title="Permanent link">&para;</a></h2>
+<p>Edit these files in the image if you want different defaults:</p>
+<ul>
+<li><code>/etc/default/piratebox</code></li>
+<li><code>/etc/default/piratebox-epaper</code></li>
+</ul>
+<h2 id="re-run-first-boot">Re-run first boot<a class="headerlink" href="#re-run-first-boot" title="Permanent link">&para;</a></h2>
+<p>If you need to rerun provisioning:</p>
+<pre class="highlight"><code class="language-bash">sudo rm -f /var/lib/piratebox/.firstboot_done
+sudo systemctl start piratebox-firstboot.service</code></pre>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../Install-Raspberry-Pi/" class="btn btn-neutral float-left" title="Install on Raspberry Pi"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../Architecture/" class="btn btn-neutral float-right" title="Architecture">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/well-it-wasnt-me/PirateBox" class="fa fa-code-fork" style="color: #fcfcfc"> PirateBox v2</a>
+        </span>
+    
+    
+      <span><a href="../Install-Raspberry-Pi/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../Architecture/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
