@@ -14,6 +14,7 @@ Usage:
 Options:
   --iface <wlanX>        Wi-Fi interface for the access point (default: wlan0)
   --ssid <name>          SSID to broadcast (default: PirateBox)
+  --country <CC>         Wi-Fi regulatory country code, e.g. IT or US (default: unset)
   --run-compose          Build and start docker compose if a compose file is found
   --compose-dir <path>   Directory that contains docker-compose.yml
   -h, --help             Show help
@@ -49,6 +50,10 @@ while [[ $# -gt 0 ]]; do
       SSID="$2"
       shift 2
       ;;
+    --country)
+      COUNTRY_CODE="$2"
+      shift 2
+      ;;
     --run-compose)
       RUN_COMPOSE=1
       shift
@@ -75,26 +80,99 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 STATIC_IP="${GATEWAY_IP}/${CIDR}"
+COUNTRY_CODE=${COUNTRY_CODE^^}
 
 export DEBIAN_FRONTEND=noninteractive
 
-echo "Installing dependencies (because hope is not a package)."
-apt-get update
-apt-get install -y hostapd dnsmasq docker.io docker-compose-plugin
-apt-get install -y dhcpcd || true
-systemctl enable --now dhcpcd || true
-systemctl restart hostapd dnsmasq || true
-systemctl unmask hostapd
-systemctl enable docker
+APT_UPDATED=0
 
-DHCPD_OK=0
-if command -v dhcpcd >/dev/null 2>&1 && systemctl list-unit-files | grep -q "^dhcpcd.service"; then
-  if systemctl is-active --quiet dhcpcd; then
-    DHCPD_OK=1
+apt_install() {
+  # Run apt-get update once per script, not once per regret.
+  if [[ "${APT_UPDATED}" == "0" ]]; then
+    apt-get update
+    APT_UPDATED=1
   fi
+  apt-get install -y "$@"
+}
+
+pkg_installed() {
+  # dpkg is the only witness that matters; dnsmasq-base ships a binary but no service.
+  dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install ok installed"
+}
+
+unit_on() {
+  # A unit counts if it runs now or will run at boot. Timing is not a personality.
+  systemctl is-active --quiet "$1" 2>/dev/null || systemctl is-enabled --quiet "$1" 2>/dev/null
+}
+
+echo "Installing dependencies (because hope is not a package)."
+if pkg_installed hostapd && pkg_installed dnsmasq; then
+  echo "hostapd and dnsmasq are already here. The mirrors get the day off."
+else
+  apt_install hostapd dnsmasq
 fi
 
-if [[ "${DHCPD_OK}" == "1" && -f /etc/dhcpcd.conf ]]; then
+if [[ "${RUN_COMPOSE}" == "1" ]]; then
+  if ! command -v docker >/dev/null 2>&1; then
+    apt_install docker.io
+  fi
+  if ! docker compose version >/dev/null 2>&1 && ! command -v docker-compose >/dev/null 2>&1; then
+    # Docker's repo calls it docker-compose-plugin, Debian calls it docker-compose. Naming is hard.
+    apt_install docker-compose-plugin || apt_install docker-compose
+  fi
+  systemctl enable --now docker
+fi
+
+systemctl unmask hostapd
+
+if command -v rfkill >/dev/null 2>&1; then
+  # Raspberry Pi OS ships Wi-Fi soft-blocked until someone picks a country. Consider it picked.
+  rfkill unblock wlan || true
+fi
+if [[ -n "${COUNTRY_CODE}" ]] && command -v raspi-config >/dev/null 2>&1; then
+  raspi-config nonint do_wifi_country "${COUNTRY_CODE}" || true
+fi
+
+write_ap_ip_unit() {
+  # Pin the gateway IP with a tiny unit instead of negotiating with a network manager.
+  cat <<EOF > /etc/systemd/system/piratebox-ap-ip.service
+# PirateBox access point address. Managed by scripts/pi-setup.sh.
+[Unit]
+Description=PirateBox access point address on ${WIFI_IFACE}
+BindsTo=sys-subsystem-net-devices-${WIFI_IFACE}.device
+After=sys-subsystem-net-devices-${WIFI_IFACE}.device
+Before=hostapd.service dnsmasq.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=-/usr/sbin/rfkill unblock wlan
+ExecStart=/sbin/ip addr replace ${STATIC_IP} dev ${WIFI_IFACE}
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  systemctl daemon-reload
+  systemctl enable piratebox-ap-ip.service
+  systemctl restart piratebox-ap-ip.service || true
+}
+
+if unit_on NetworkManager; then
+  # NetworkManager and hostapd both want the radio. Only one of them gets to be the AP.
+  mkdir -p /etc/NetworkManager/conf.d
+  cat <<EOF > /etc/NetworkManager/conf.d/99-piratebox.conf
+# PirateBox owns this interface now. Managed by scripts/pi-setup.sh.
+[keyfile]
+unmanaged-devices=interface-name:${WIFI_IFACE}
+EOF
+  if command -v nmcli >/dev/null 2>&1; then
+    # Older versions of this script left a client-mode profile here. It never worked.
+    nmcli connection delete piratebox-ap >/dev/null 2>&1 || true
+    nmcli device disconnect "${WIFI_IFACE}" >/dev/null 2>&1 || true
+  fi
+  systemctl restart NetworkManager || true
+  write_ap_ip_unit
+elif unit_on dhcpcd && [[ -f /etc/dhcpcd.conf ]]; then
   if ! grep -q "PirateBox static IP" /etc/dhcpcd.conf; then
     cat <<EOF >> /etc/dhcpcd.conf
 
@@ -105,13 +183,7 @@ nohook wpa_supplicant
 EOF
   fi
   systemctl restart dhcpcd || true
-elif command -v nmcli >/dev/null 2>&1; then
-  nmcli dev set "${WIFI_IFACE}" managed yes || true
-  if ! nmcli -t -f NAME connection show | grep -q "^piratebox-ap$"; then
-    nmcli con add type wifi ifname "${WIFI_IFACE}" con-name piratebox-ap autoconnect yes ssid "${SSID}"
-  fi
-  nmcli con modify piratebox-ap ipv4.addresses "${STATIC_IP}" ipv4.method manual ipv6.method ignore
-elif systemctl list-unit-files | grep -q "^systemd-networkd.service"; then
+elif unit_on systemd-networkd; then
   mkdir -p /etc/systemd/network
   cat <<EOF > /etc/systemd/network/10-piratebox-ap.network
 [Match]
@@ -123,13 +195,15 @@ EOF
   systemctl enable --now systemd-networkd || true
   systemctl restart systemd-networkd || true
 else
-  echo "No dhcpcd or nmcli found. Configure ${WIFI_IFACE} with ${STATIC_IP} manually."
+  echo "No NetworkManager, dhcpcd or networkd found. Pinning ${STATIC_IP} on ${WIFI_IFACE} ourselves."
+  write_ap_ip_unit
 fi
 
 HOSTAPD_CONF="/etc/hostapd/hostapd.conf"
 {
   if [[ -n ${COUNTRY_CODE} ]]; then
     echo "country_code=${COUNTRY_CODE}"
+    echo "ieee80211d=1"
   fi
   cat <<EOF
 interface=${WIFI_IFACE}
@@ -170,7 +244,11 @@ systemctl enable hostapd dnsmasq
 systemctl restart hostapd dnsmasq
 
 echo "PirateBox AP is up on ${WIFI_IFACE}. SSID: ${SSID}."
-echo "Web UI: http://${GATEWAY_IP}:8080"
+if [[ "${RUN_COMPOSE}" == "1" ]]; then
+  echo "Web UI: http://${GATEWAY_IP}:8080"
+else
+  echo "Web UI: http://${GATEWAY_IP}/ (piratebox.service, port 80)"
+fi
 
 do_compose() {
   # Run docker compose if a file is available.
@@ -180,7 +258,11 @@ do_compose() {
     return
   fi
   echo "Starting PirateBox via docker compose."
-  docker compose -f "${dir}/docker-compose.yml" up -d --build
+  if docker compose version >/dev/null 2>&1; then
+    docker compose -f "${dir}/docker-compose.yml" up -d --build
+  else
+    docker-compose -f "${dir}/docker-compose.yml" up -d --build
+  fi
 }
 
 if [[ "${RUN_COMPOSE}" == "1" ]]; then

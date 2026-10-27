@@ -24,14 +24,19 @@ apt-get update
 apt-get install -y python3-venv python3-pip
 
 if [[ ! -d /opt/piratebox/.venv ]]; then
-  python3 -m venv /opt/piratebox/.venv
+  # System site packages keep apt's GPIO libraries visible, so nothing compiles on a Pi.
+  python3 -m venv --system-site-packages /opt/piratebox/.venv
 fi
 
 /opt/piratebox/.venv/bin/pip install --upgrade pip
 /opt/piratebox/.venv/bin/pip install -r /opt/piratebox/requirements.txt
 
 if [[ "${PIRATEBOX_EPD_ENABLE:-0}" == "1" ]]; then
-  /opt/piratebox/.venv/bin/pip install -r /opt/piratebox/requirements-epaper.txt || true
+  echo "Installing e-paper bits. Pillow alone never drew a single pixel."
+  /opt/piratebox/scripts/install-epd-driver.sh --driver "${PIRATEBOX_EPD_DRIVER:-auto}" --venv /opt/piratebox/.venv || true
+  if command -v raspi-config >/dev/null 2>&1; then
+    raspi-config nonint do_spi 0 || true
+  fi
 fi
 
 cp /opt/piratebox/scripts/piratebox.service /etc/systemd/system/piratebox.service
