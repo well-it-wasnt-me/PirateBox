@@ -189,3 +189,24 @@ Run with `--debug` and watch for driver selection logs. If nothing shows up, the
 - PirateBox counts: SQLite at `PIRATEBOX_DB_PATH`
 - SSID: `/etc/hostapd/hostapd.conf`
 - Connected clients: `iw dev $PIRATEBOX_WIFI_IFACE station dump`
+- Address and AP state: the IPv4 address on `$PIRATEBOX_WIFI_IFACE` (`ip -4 addr`), shown only when the
+  interface is up, not rfkill-blocked, and `iw` reports an AP with an SSID. Otherwise the display shows
+  `AP STARTING` or `AP OFFLINE` with a reason. "Starting" comes from `/run/piratebox/ap-status`
+  (written by first boot and `piratebox-ap-health`), or, without that file, from the first
+  `PIRATEBOX_EPD_AP_GRACE` seconds of uptime (default `300`). Hostname lookups are never used, so no
+  more `127.0.1.1`.
+- DHCP: something listening on UDP 67, from `/proc/net/udp`.
+- Web app: a TCP connection to `127.0.0.1:$PIRATEBOX_EPD_WEB_PORT` (default: the app's `PORT`, else `80`).
+
+## Startup checklist
+
+Until the box is usable (AP broadcasting, address assigned, DHCP listening, web app answering), the
+`dashboard` page is replaced by a checklist: RADIO, WIFI, IP, DHCP, WEB, each done (black), waiting
+(hollow) or failed (red), under a title such as `FIRST BOOT SETUP`, `STARTING UP`, `AP OFFLINE`,
+`DHCP DOWN` or `WEB APP DOWN`, and a hint about where to look next. The other pages keep their own
+layout and show `AP STARTING` / `AP OFFLINE` in place of the address.
+
+While not ready the display samples every 10 seconds, and the first time everything is ready it
+redraws immediately, once per service start, ignoring `PIRATEBOX_EPD_MIN_REFRESH` for that one frame.
+`PIRATEBOX_EPD_READY_REFRESH=0` turns that exception off. `PIRATEBOX_EPD_WEB_PORT=0` drops the web
+check, for setups where the app lives somewhere the display cannot knock.

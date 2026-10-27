@@ -29,8 +29,11 @@ sudo ./scripts/pi-setup.sh --iface wlan0 --country IT
 ```
 
 If you use the script, it handles the hostapd/dnsmasq config, static IP, and offline rules. You can skip to the test section.
-On NetworkManager systems (Bookworm and later) it marks the AP interface as unmanaged and pins the gateway IP with a
-small `piratebox-ap-ip.service`, so NetworkManager and hostapd stop fighting over the same radio.
+On NetworkManager systems (Bookworm and later) it marks the AP interface as unmanaged, switches NetworkManager's
+saved Wi-Fi radio state on (otherwise NetworkManager soft-blocks the radio on every start), and pins the gateway IP
+with a small `piratebox-ap-ip.service`, so NetworkManager and hostapd stop fighting over the same radio.
+It finishes by installing `piratebox-ap-health.service`, which checks on every boot that the AP is actually
+broadcasting and repairs the broken part, a bounded number of times.
 Docker is only installed when you ask for `--run-compose`.
 
 ## Step 1: Flash the OS
@@ -143,6 +146,8 @@ sudo tee /etc/NetworkManager/conf.d/99-piratebox.conf >/dev/null <<'EOF'
 [keyfile]
 unmanaged-devices=interface-name:wlan0
 EOF
+# NetworkManager re-applies its saved radio switch to rfkill at every start, unmanaged or not.
+sudo nmcli radio wifi on
 sudo systemctl restart NetworkManager
 sudo ip addr replace 10.0.0.1/24 dev wlan0
 ```

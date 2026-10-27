@@ -34,6 +34,11 @@ ruff check .
 pytest
 ```
 
+`tests/test_boot_lifecycle.py` boots a pretend Pi Zero W over and over: the real installer, first-boot
+and setup scripts run inside an unprivileged user namespace against a fake systemd, kernel and radio
+(`tests/fake_pi.py`, `tests/fake-pi.sh`). It needs `unshare` and `rsync`, and skips itself where user
+namespaces are locked down, such as stock Ubuntu CI runners. It proves the logic, not the radio.
+
 ## Semversioning
 
 We use Python Semantic Release to cut semver tags based on conventional commits. It updates `CHANGELOG.md` and bumps `VERSION`. If your commit messages are chaotic, so will be the releases.

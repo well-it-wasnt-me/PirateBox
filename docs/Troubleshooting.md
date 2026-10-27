@@ -4,7 +4,12 @@ Things fail. PirateBox is honest about it. Here are the common ones.
 
 ## The Wi-Fi network does not show up
 
-- Check that `hostapd` is running: `systemctl status hostapd`.
+- Ask the health check first: `systemctl status piratebox-ap-health` and `/var/log/piratebox-ap-health.log`.
+  `sudo piratebox-ap-health --settle 0 --attempts 0` re-checks without touching anything.
+- `hostapd` being "active" proves little: it keeps running while rfkill has the radio switched off.
+  `rfkill list` and `iw dev wlan0 info` (look for `type AP` and an `ssid` line) tell the truth.
+- `grep WirelessEnabled /var/lib/NetworkManager/NetworkManager.state`. If it says `false`,
+  NetworkManager switches the radio off on every start; `sudo nmcli radio wifi on` fixes that for good.
 - Confirm the Wi-Fi interface name with `ip -br link`.
 - If you use a USB adapter, ensure it supports AP mode with `iw list`.
 
@@ -57,8 +62,9 @@ sudo systemctl start piratebox-firstboot.service
 
 ## Pi Zero W edition problems
 
-See the troubleshooting section in [Pi Zero W Edition](Pi-Zero-W.md). Short version: check
-`/var/log/piratebox-zero-firstboot.log`, then `journalctl -u hostapd -u piratebox-epaper -b`.
+See the troubleshooting section in [Pi Zero W Edition](Pi-Zero-W.md), including what to read off the
+SD card when the box has no console. Short version: `piratebox-ap-status.txt` on the boot partition,
+then `/var/log/piratebox-ap-health.log` and `/var/log/piratebox-zero-firstboot.log`.
 
 ## You want it online
 

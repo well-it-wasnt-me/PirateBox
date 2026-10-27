@@ -52,7 +52,13 @@ PIRATEBOX_MAX_UPLOAD_MB=512
 - `PIRATEBOX_EPD_MIN_REFRESH` (default: `0`, or `180` on tri-color panels)
 - `PIRATEBOX_EPD_MAX_AGE` (default: `3600` seconds; `0` disables)
 - `PIRATEBOX_EPD_ENABLE` (default: `0`; first-boot image only)
-- `PIRATEBOX_WIFI_IFACE` (default: `wlan0`; used to count connected clients)
+- `PIRATEBOX_WIFI_IFACE` (default: `wlan0`; the AP interface whose address, state and clients are shown)
+- `PIRATEBOX_EPD_AP_GRACE` (default: `300` seconds; how long after boot a down AP counts as "starting"
+  when the health check has not said anything yet)
+- `PIRATEBOX_EPD_WEB_PORT` (default: `PORT`, else `80`; where the startup checklist knocks for the web
+  app; `0` skips the check)
+- `PIRATEBOX_EPD_READY_REFRESH` (default: `1`; draw the first "ready" frame immediately, once per start,
+  instead of waiting out `PIRATEBOX_EPD_MIN_REFRESH`)
 
 ## Wireless settings
 
@@ -69,6 +75,10 @@ If you use `scripts/pi-setup.sh`, the following environment variables control th
 - `PIRATEBOX_COUNTRY_CODE` (default: empty; also `--country`)
 
 `pi-setup.sh` only installs Docker when you pass `--run-compose`.
+
+It also installs `piratebox-ap-health.service`, which checks and, within limits, repairs the AP on
+every boot. Options for running it by hand: `--iface`, `--address`, `--attempts` (default `4`, `0`
+only checks), `--interval` (default `15` s), `--settle` (default `10` s).
 
 ## Pi Zero W settings
 
