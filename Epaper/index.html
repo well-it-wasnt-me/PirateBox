@@ -105,6 +105,8 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#data-sources">Data sources</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#startup-checklist">Startup checklist</a>
+    </li>
     </ul>
                 </li>
               </ul>
@@ -271,7 +273,25 @@ journalctl -u piratebox-epaper.service -f</code></pre>
 <li>PirateBox counts: SQLite at <code>PIRATEBOX_DB_PATH</code></li>
 <li>SSID: <code>/etc/hostapd/hostapd.conf</code></li>
 <li>Connected clients: <code>iw dev $PIRATEBOX_WIFI_IFACE station dump</code></li>
+<li>Address and AP state: the IPv4 address on <code>$PIRATEBOX_WIFI_IFACE</code> (<code>ip -4 addr</code>), shown only when the
+  interface is up, not rfkill-blocked, and <code>iw</code> reports an AP with an SSID. Otherwise the display shows
+  <code>AP STARTING</code> or <code>AP OFFLINE</code> with a reason. "Starting" comes from <code>/run/piratebox/ap-status</code>
+  (written by first boot and <code>piratebox-ap-health</code>), or, without that file, from the first
+  <code>PIRATEBOX_EPD_AP_GRACE</code> seconds of uptime (default <code>300</code>). Hostname lookups are never used, so no
+  more <code>127.0.1.1</code>.</li>
+<li>DHCP: something listening on UDP 67, from <code>/proc/net/udp</code>.</li>
+<li>Web app: a TCP connection to <code>127.0.0.1:$PIRATEBOX_EPD_WEB_PORT</code> (default: the app's <code>PORT</code>, else <code>80</code>).</li>
 </ul>
+<h2 id="startup-checklist">Startup checklist<a class="headerlink" href="#startup-checklist" title="Permanent link">&para;</a></h2>
+<p>Until the box is usable (AP broadcasting, address assigned, DHCP listening, web app answering), the
+<code>dashboard</code> page is replaced by a checklist: RADIO, WIFI, IP, DHCP, WEB, each done (black), waiting
+(hollow) or failed (red), under a title such as <code>FIRST BOOT SETUP</code>, <code>STARTING UP</code>, <code>AP OFFLINE</code>,
+<code>DHCP DOWN</code> or <code>WEB APP DOWN</code>, and a hint about where to look next. The other pages keep their own
+layout and show <code>AP STARTING</code> / <code>AP OFFLINE</code> in place of the address.</p>
+<p>While not ready the display samples every 10 seconds, and the first time everything is ready it
+redraws immediately, once per service start, ignoring <code>PIRATEBOX_EPD_MIN_REFRESH</code> for that one frame.
+<code>PIRATEBOX_EPD_READY_REFRESH=0</code> turns that exception off. <code>PIRATEBOX_EPD_WEB_PORT=0</code> drops the web
+check, for setups where the app lives somewhere the display cannot knock.</p>
               
             </div>
           </div><footer>

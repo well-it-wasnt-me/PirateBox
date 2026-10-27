@@ -138,7 +138,12 @@
 <p>Things fail. PirateBox is honest about it. Here are the common ones.</p>
 <h2 id="the-wi-fi-network-does-not-show-up">The Wi-Fi network does not show up<a class="headerlink" href="#the-wi-fi-network-does-not-show-up" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Check that <code>hostapd</code> is running: <code>systemctl status hostapd</code>.</li>
+<li>Ask the health check first: <code>systemctl status piratebox-ap-health</code> and <code>/var/log/piratebox-ap-health.log</code>.
+  <code>sudo piratebox-ap-health --settle 0 --attempts 0</code> re-checks without touching anything.</li>
+<li><code>hostapd</code> being "active" proves little: it keeps running while rfkill has the radio switched off.
+  <code>rfkill list</code> and <code>iw dev wlan0 info</code> (look for <code>type AP</code> and an <code>ssid</code> line) tell the truth.</li>
+<li><code>grep WirelessEnabled /var/lib/NetworkManager/NetworkManager.state</code>. If it says <code>false</code>,
+  NetworkManager switches the radio off on every start; <code>sudo nmcli radio wifi on</code> fixes that for good.</li>
 <li>Confirm the Wi-Fi interface name with <code>ip -br link</code>.</li>
 <li>If you use a USB adapter, ensure it supports AP mode with <code>iw list</code>.</li>
 </ul>
@@ -187,8 +192,9 @@ sudo systemctl start piratebox-firstboot.service</code></pre>
 <li>Install GPIO libraries: <code>sudo apt install python3-rpi-lgpio python3-spidev</code>.</li>
 </ul>
 <h2 id="pi-zero-w-edition-problems">Pi Zero W edition problems<a class="headerlink" href="#pi-zero-w-edition-problems" title="Permanent link">&para;</a></h2>
-<p>See the troubleshooting section in <a href="../Pi-Zero-W/">Pi Zero W Edition</a>. Short version: check
-<code>/var/log/piratebox-zero-firstboot.log</code>, then <code>journalctl -u hostapd -u piratebox-epaper -b</code>.</p>
+<p>See the troubleshooting section in <a href="../Pi-Zero-W/">Pi Zero W Edition</a>, including what to read off the
+SD card when the box has no console. Short version: <code>piratebox-ap-status.txt</code> on the boot partition,
+then <code>/var/log/piratebox-ap-health.log</code> and <code>/var/log/piratebox-zero-firstboot.log</code>.</p>
 <h2 id="you-want-it-online">You want it online<a class="headerlink" href="#you-want-it-online" title="Permanent link">&para;</a></h2>
 <p>This is an offline-first project. If you must add internet, do so knowingly and accept that it defeats the point.</p>
               

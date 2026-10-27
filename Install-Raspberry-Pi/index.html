@@ -168,8 +168,11 @@
 <p>Set the Wi-Fi country while you are at it, or Raspberry Pi OS keeps the radio soft-blocked:</p>
 <pre class="highlight"><code class="language-bash">sudo ./scripts/pi-setup.sh --iface wlan0 --country IT</code></pre>
 <p>If you use the script, it handles the hostapd/dnsmasq config, static IP, and offline rules. You can skip to the test section.
-On NetworkManager systems (Bookworm and later) it marks the AP interface as unmanaged and pins the gateway IP with a
-small <code>piratebox-ap-ip.service</code>, so NetworkManager and hostapd stop fighting over the same radio.
+On NetworkManager systems (Bookworm and later) it marks the AP interface as unmanaged, switches NetworkManager's
+saved Wi-Fi radio state on (otherwise NetworkManager soft-blocks the radio on every start), and pins the gateway IP
+with a small <code>piratebox-ap-ip.service</code>, so NetworkManager and hostapd stop fighting over the same radio.
+It finishes by installing <code>piratebox-ap-health.service</code>, which checks on every boot that the AP is actually
+broadcasting and repairs the broken part, a bounded number of times.
 Docker is only installed when you ask for <code>--run-compose</code>.</p>
 <h2 id="step-1-flash-the-os">Step 1: Flash the OS<a class="headerlink" href="#step-1-flash-the-os" title="Permanent link">&para;</a></h2>
 <ol>
@@ -239,6 +242,8 @@ then pin the address yourself:</p>
 [keyfile]
 unmanaged-devices=interface-name:wlan0
 EOF
+# NetworkManager re-applies its saved radio switch to rfkill at every start, unmanaged or not.
+sudo nmcli radio wifi on
 sudo systemctl restart NetworkManager
 sudo ip addr replace 10.0.0.1/24 dev wlan0</code></pre>
 <p>The <code>ip addr</code> line does not survive a reboot; <code>scripts/pi-setup.sh</code> installs a tiny unit that does it at boot.</p>

@@ -171,7 +171,13 @@ PIRATEBOX_MAX_UPLOAD_MB=512</code></pre>
 <li><code>PIRATEBOX_EPD_MIN_REFRESH</code> (default: <code>0</code>, or <code>180</code> on tri-color panels)</li>
 <li><code>PIRATEBOX_EPD_MAX_AGE</code> (default: <code>3600</code> seconds; <code>0</code> disables)</li>
 <li><code>PIRATEBOX_EPD_ENABLE</code> (default: <code>0</code>; first-boot image only)</li>
-<li><code>PIRATEBOX_WIFI_IFACE</code> (default: <code>wlan0</code>; used to count connected clients)</li>
+<li><code>PIRATEBOX_WIFI_IFACE</code> (default: <code>wlan0</code>; the AP interface whose address, state and clients are shown)</li>
+<li><code>PIRATEBOX_EPD_AP_GRACE</code> (default: <code>300</code> seconds; how long after boot a down AP counts as "starting"
+  when the health check has not said anything yet)</li>
+<li><code>PIRATEBOX_EPD_WEB_PORT</code> (default: <code>PORT</code>, else <code>80</code>; where the startup checklist knocks for the web
+  app; <code>0</code> skips the check)</li>
+<li><code>PIRATEBOX_EPD_READY_REFRESH</code> (default: <code>1</code>; draw the first "ready" frame immediately, once per start,
+  instead of waiting out <code>PIRATEBOX_EPD_MIN_REFRESH</code>)</li>
 </ul>
 <h2 id="wireless-settings">Wireless settings<a class="headerlink" href="#wireless-settings" title="Permanent link">&para;</a></h2>
 <p>If you use <code>scripts/pi-setup.sh</code>, the following environment variables control the AP setup:</p>
@@ -187,6 +193,9 @@ PIRATEBOX_MAX_UPLOAD_MB=512</code></pre>
 <li><code>PIRATEBOX_COUNTRY_CODE</code> (default: empty; also <code>--country</code>)</li>
 </ul>
 <p><code>pi-setup.sh</code> only installs Docker when you pass <code>--run-compose</code>.</p>
+<p>It also installs <code>piratebox-ap-health.service</code>, which checks and, within limits, repairs the AP on
+every boot. Options for running it by hand: <code>--iface</code>, <code>--address</code>, <code>--attempts</code> (default <code>4</code>, <code>0</code>
+only checks), <code>--interval</code> (default <code>15</code> s), <code>--settle</code> (default <code>10</code> s).</p>
 <h2 id="pi-zero-w-settings">Pi Zero W settings<a class="headerlink" href="#pi-zero-w-settings" title="Permanent link">&para;</a></h2>
 <p>The <a href="../Pi-Zero-W/">Pi Zero W Edition</a> reads <code>piratebox.txt</code> from the boot partition on first boot
 (<code>SSID</code>, <code>COUNTRY</code>, <code>EPD_ROTATE</code>, <code>EPD_ENABLE</code>) and ships its own defaults in <code>scripts/zero/</code>.

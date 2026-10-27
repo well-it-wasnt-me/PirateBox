@@ -146,6 +146,10 @@ pip install -r requirements.txt -r requirements-dev.txt</code></pre>
 <pre class="highlight"><code class="language-bash">ruff check .</code></pre>
 <h2 id="test">Test<a class="headerlink" href="#test" title="Permanent link">&para;</a></h2>
 <pre class="highlight"><code class="language-bash">pytest</code></pre>
+<p><code>tests/test_boot_lifecycle.py</code> boots a pretend Pi Zero W over and over: the real installer, first-boot
+and setup scripts run inside an unprivileged user namespace against a fake systemd, kernel and radio
+(<code>tests/fake_pi.py</code>, <code>tests/fake-pi.sh</code>). It needs <code>unshare</code> and <code>rsync</code>, and skips itself where user
+namespaces are locked down, such as stock Ubuntu CI runners. It proves the logic, not the radio.</p>
 <h2 id="semversioning">Semversioning<a class="headerlink" href="#semversioning" title="Permanent link">&para;</a></h2>
 <p>We use Python Semantic Release to cut semver tags based on conventional commits. It updates <code>CHANGELOG.md</code> and bumps <code>VERSION</code>. If your commit messages are chaotic, so will be the releases.</p>
 <p>Expected flow:</p>
