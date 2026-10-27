@@ -10,6 +10,7 @@ nav:
   - Overview: Overview.md
   - Install on Raspberry Pi: Install-Raspberry-Pi.md
   - Prebuilt Image: Prebuilt-Image.md
+  - Pi Zero W Edition: Pi-Zero-W.md
   - Architecture: Architecture.md
   - Configuration: Configuration.md
   - Operations: Operations.md

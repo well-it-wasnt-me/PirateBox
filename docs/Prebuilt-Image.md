@@ -53,7 +53,10 @@ The first boot needs temporary internet access to install Python packages. After
 Edit these files in the image if you want different defaults:
 
 - `/etc/default/piratebox`
-- `/etc/default/piratebox-epaper`
+- `/etc/default/piratebox-epaper` (set `PIRATEBOX_EPD_ENABLE=1` to install the e-paper driver on first boot)
+
+The first boot does not configure the access point. Run `sudo /opt/piratebox/scripts/pi-setup.sh --country XX`
+once it is up. Want an image that does everything offline? See the [Pi Zero W Edition](Pi-Zero-W.md).
 
 ## Re-run first boot
 

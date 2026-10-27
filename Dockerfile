@@ -16,8 +16,10 @@ RUN adduser --disabled-password --gecos "" appuser \
     && mkdir -p /data/files \
     && chown -R appuser:appuser /data
 
-USER appuser
+# Starts as root only long enough to fix bind-mount ownership, then drops to appuser.
+COPY scripts/docker-entrypoint.sh /usr/local/bin/piratebox-entrypoint
 
 EXPOSE 8080
 
+ENTRYPOINT ["/usr/local/bin/piratebox-entrypoint"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]

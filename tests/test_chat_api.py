@@ -29,3 +29,17 @@ def test_chat_post_and_fetch(client):
     after = client.get(f"/api/chat/messages?after_id={messages[0]['id']}")
     assert after.status_code == 200
     assert after.json()["messages"] == []
+
+
+def test_chat_page_shows_latest_messages(client):
+    """The page should open on the newest chatter, not the archaeology."""
+    from app import db
+
+    for idx in range(60):
+        db.insert_chat_message("Bot", f"message-{idx:02d}")
+
+    response = client.get("/chat")
+    assert response.status_code == 200
+    assert "message-59" in response.text
+    assert "message-09" not in response.text
+    assert "message-10" in response.text

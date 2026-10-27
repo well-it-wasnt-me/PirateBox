@@ -22,7 +22,16 @@ To run Docker Compose at the end:
 sudo ./scripts/pi-setup.sh --iface wlan0 --run-compose
 ```
 
+Set the Wi-Fi country while you are at it, or Raspberry Pi OS keeps the radio soft-blocked:
+
+```bash
+sudo ./scripts/pi-setup.sh --iface wlan0 --country IT
+```
+
 If you use the script, it handles the hostapd/dnsmasq config, static IP, and offline rules. You can skip to the test section.
+On NetworkManager systems (Bookworm and later) it marks the AP interface as unmanaged and pins the gateway IP with a
+small `piratebox-ap-ip.service`, so NetworkManager and hostapd stop fighting over the same radio.
+Docker is only installed when you ask for `--run-compose`.
 
 ## Step 1: Flash the OS
 
@@ -126,13 +135,19 @@ EOF
 sudo systemctl restart dhcpcd
 ```
 
-Option B (NetworkManager):
+Option B (NetworkManager, the default since Bookworm). Tell NetworkManager to leave the radio to hostapd,
+then pin the address yourself:
 
 ```bash
-sudo nmcli dev set wlan0 managed yes
-sudo nmcli con add type wifi ifname wlan0 con-name piratebox-ap autoconnect yes ssid PirateBox
-sudo nmcli con modify piratebox-ap ipv4.addresses 10.0.0.1/24 ipv4.method manual
+sudo tee /etc/NetworkManager/conf.d/99-piratebox.conf >/dev/null <<'EOF'
+[keyfile]
+unmanaged-devices=interface-name:wlan0
+EOF
+sudo systemctl restart NetworkManager
+sudo ip addr replace 10.0.0.1/24 dev wlan0
 ```
+
+The `ip addr` line does not survive a reboot; `scripts/pi-setup.sh` installs a tiny unit that does it at boot.
 
 3. Configure hostapd:
 

@@ -148,7 +148,13 @@ def get_file(file_id: int) -> Optional[StoredFile]:
     return StoredFile(**row) if row else None
 
 
-def insert_file(original_name: str, stored_name: str, size_bytes: int, sha256: str) -> int:
+def insert_file(
+    original_name: str,
+    stored_name: str,
+    size_bytes: int,
+    sha256: str,
+    uploaded_at: Optional[str] = None,
+) -> int:
     """Persist file metadata and return the new id."""
     with _connect() as conn:
         cur = conn.execute(
@@ -156,7 +162,7 @@ def insert_file(original_name: str, stored_name: str, size_bytes: int, sha256: s
             INSERT INTO files (original_name, stored_name, size_bytes, sha256, uploaded_at)
             VALUES (?, ?, ?, ?, ?)
             """,
-            (original_name, stored_name, size_bytes, sha256, _utc_now()),
+            (original_name, stored_name, size_bytes, sha256, uploaded_at or _utc_now()),
         )
         conn.commit()
         return int(cur.lastrowid)
@@ -174,6 +180,25 @@ def list_chat_messages(after_id: int = 0, limit: int = 200) -> list[ChatMessage]
             LIMIT ?
             """,
             (after_id, limit),
+        ).fetchall()
+    return [ChatMessage(**row) for row in rows]
+
+
+def list_recent_chat_messages(limit: int = 50) -> list[ChatMessage]:
+    """Return the newest `limit` chat messages, oldest first, like a sane transcript."""
+    with _connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, nickname, message, created_at
+            FROM (
+                SELECT id, nickname, message, created_at
+                FROM chat_messages
+                ORDER BY id DESC
+                LIMIT ?
+            )
+            ORDER BY id ASC
+            """,
+            (limit,),
         ).fetchall()
     return [ChatMessage(**row) for row in rows]
 
@@ -323,23 +348,25 @@ def store_upload(file_obj, original_name: str) -> StoredFile:
                     raise ValueError("File too large")
                 digest.update(chunk)
                 target.write(chunk)
+        sha256 = digest.hexdigest()
+        uploaded_at = _utc_now()
+        file_id = insert_file(
+            original_name=original_name,
+            stored_name=stored_name,
+            size_bytes=size_bytes,
+            sha256=sha256,
+            uploaded_at=uploaded_at,
+        )
     except Exception:
-        if target_path.exists():
-            target_path.unlink()
+        # No row, no file. Orphans on an SD card are just slower disappointment.
+        target_path.unlink(missing_ok=True)
         raise
-
-    file_id = insert_file(
-        original_name=original_name,
-        stored_name=stored_name,
-        size_bytes=size_bytes,
-        sha256=digest.hexdigest(),
-    )
 
     return StoredFile(
         id=file_id,
         original_name=original_name,
         stored_name=stored_name,
         size_bytes=size_bytes,
-        sha256=digest.hexdigest(),
-        uploaded_at=_utc_now(),
+        sha256=sha256,
+        uploaded_at=uploaded_at,
     )

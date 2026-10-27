@@ -29,6 +29,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
+if findmnt -rn -o TARGET 2>/dev/null | grep -q "^${WORK_DIR}"; then
+  echo "Something is still mounted under ${WORK_DIR}. Unmount it first; rm -rf on a mounted image ruins weekends."
+  exit 1
+fi
 rm -rf "${WORK_DIR}"
 mkdir -p "${WORK_DIR}" "${OUT_DIR}" "${MOUNT_ROOT}" "${MOUNT_BOOT}"
 
@@ -48,6 +52,12 @@ LOOP_DEV=$(${SUDO} losetup --show -fP "${IMAGE_RAW}")
 BOOT_PART="${LOOP_DEV}p1"
 ROOT_PART="${LOOP_DEV}p2"
 
+# Partition nodes show up when udev feels like it. Give it a few seconds of patience.
+for _ in $(seq 1 10); do
+  [[ -b "${BOOT_PART}" && -b "${ROOT_PART}" ]] && break
+  ${SUDO} udevadm settle 2>/dev/null || sleep 1
+done
+
 if [[ ! -b "${BOOT_PART}" || ! -b "${ROOT_PART}" ]]; then
   echo "Partition devices not found for ${LOOP_DEV}."
   exit 1
@@ -64,6 +74,9 @@ ${SUDO} rsync -a --delete \
   --exclude "__pycache__" \
   --exclude ".pytest_cache" \
   --exclude "data" \
+  --exclude "/dist" \
+  --exclude "/site" \
+  --exclude "/vendor" \
   "${ROOT_DIR}/" "${MOUNT_ROOT}/opt/piratebox/"
 
 ${SUDO} install -m 755 "${ROOT_DIR}/scripts/piratebox-firstboot.sh" "${MOUNT_ROOT}/usr/local/sbin/piratebox-firstboot"
@@ -85,6 +98,8 @@ PIRATEBOX_MAX_UPLOAD_MB=512
 ENV
 
 ${SUDO} tee "${MOUNT_ROOT}/etc/default/piratebox-epaper" >/dev/null <<'ENV'
+# Set to 1 before first boot to install the e-paper driver and enable the display service.
+PIRATEBOX_EPD_ENABLE=0
 PIRATEBOX_EPD_INTERVAL=30
 PIRATEBOX_EPD_ROTATE=0
 PIRATEBOX_EPD_BUTTON_PINS=5,6,13,19

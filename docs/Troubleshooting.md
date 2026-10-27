@@ -55,6 +55,11 @@ sudo systemctl start piratebox-firstboot.service
 - Run the script manually: `sudo ./scripts/epaper_hat.py --debug`.
 - Install GPIO libraries: `sudo apt install python3-rpi-lgpio python3-spidev`.
 
+## Pi Zero W edition problems
+
+See the troubleshooting section in [Pi Zero W Edition](Pi-Zero-W.md). Short version: check
+`/var/log/piratebox-zero-firstboot.log`, then `journalctl -u hostapd -u piratebox-epaper -b`.
+
 ## You want it online
 
 This is an offline-first project. If you must add internet, do so knowingly and accept that it defeats the point.

@@ -17,7 +17,7 @@ Because not every network needs to be online, and not every file needs to be ind
 
 ## What you need
 
-- Raspberry Pi 4 or 5 (5 is recommended).
+- Raspberry Pi 4 or 5 (5 is recommended), or a Pi Zero W for the [pocket-sized edition](Pi-Zero-W.md).
 - microSD card, 16 GB minimum.
 - USB power supply that is not lying about its amps.
 - Optional USB Wi-Fi adapter if you want a dedicated AP radio.

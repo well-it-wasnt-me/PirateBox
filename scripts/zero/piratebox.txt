@@ -1,0 +1,15 @@
+# PirateBox Zero W settings.
+# This partition is FAT, so any computer can edit it before the first boot.
+# Read once on first boot, then politely ignored. KEY=value, no quotes, no drama.
+
+# Wi-Fi name people will see. Up to 32 characters; the e-paper is not a billboard.
+SSID=PirateBox
+
+# Two-letter Wi-Fi country code (IT, US, DE, ...). Leave it empty and the radio may sulk.
+COUNTRY=
+
+# E-paper rotation in degrees: 0 or 180. Try 180 if the dashboard reads upside down.
+EPD_ROTATE=0
+
+# 1 if the Waveshare 2.13" e-Paper HAT (B) V4 is attached, 0 for a headless pirate.
+EPD_ENABLE=1

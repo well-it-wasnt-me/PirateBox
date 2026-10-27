@@ -55,13 +55,19 @@ pytest
 See `docs/Install-Raspberry-Pi.md` for the Wi-Fi access point configuration and offline-only networking steps.
 If you prefer a prebuilt image, the build script is in `scripts/build_rpi_image.sh`, and CI produces an `.img.xz` artifact.
 
+## Raspberry Pi Zero W edition
+
+A dedicated build for the original Pi Zero W with a Waveshare 2.13 inch e-Paper HAT (B) V4 (black/white/red, no buttons).
+It has its own installer (`scripts/zero/install-zero.sh`) and its own offline-ready image (`scripts/zero/build-zero-image.sh`).
+See `docs/Pi-Zero-W.md`. Small box, same attitude.
+
 ## Docs
 
 Detailed docs live under `docs/` and are published to GitHub Pages by CI.
 
 ## Optional e-Paper HAT status display
 
-See `docs/Epaper.md` for the 2.7 inch e-Paper HAT module (logo + stats + buttons).
+See `docs/Epaper.md` for the 2.7 inch e-Paper HAT module (logo + stats + buttons) and the 2.13 inch tri-color one.
 
 ## Configuration
 
@@ -69,8 +75,8 @@ Environment variables (optional):
 
 - `PIRATEBOX_NAME` (default: PirateBox)
 - `PIRATEBOX_DATA_DIR` (default: `./data`)
-- `PIRATEBOX_DB_PATH` (default: `/data/piratebox.db`)
-- `PIRATEBOX_FILES_DIR` (default: `/data/files`)
+- `PIRATEBOX_DB_PATH` (default: `${PIRATEBOX_DATA_DIR}/piratebox.db`; `/data/piratebox.db` in Docker)
+- `PIRATEBOX_FILES_DIR` (default: `${PIRATEBOX_DATA_DIR}/files`; `/data/files` in Docker)
 - `PIRATEBOX_MAX_UPLOAD_MB` (default: `512`)
 - `PIRATEBOX_MAX_MESSAGE_LEN` (default: `500`)
 - `PIRATEBOX_MAX_THREAD_TITLE_LEN` (default: `120`)

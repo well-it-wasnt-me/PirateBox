@@ -12,6 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import db
+from app import main as app_main
 from app.main import app as fastapi_app
 
 
@@ -32,8 +33,10 @@ def storage(tmp_path, monkeypatch):
 @pytest.fixture()
 def client(storage):
     """Provide a test client wired to the FastAPI app."""
+    app_main._captive_acked_clients.clear()
     with TestClient(fastapi_app) as test_client:
         yield test_client
+    app_main._captive_acked_clients.clear()
 
 
 @pytest.fixture()

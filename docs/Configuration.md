@@ -47,6 +47,12 @@ PIRATEBOX_MAX_UPLOAD_MB=512
 - `PIRATEBOX_EPD_FONT` (default: DejaVu Sans if available)
 - `PIRATEBOX_EPD_REFRESH_ON_CHANGE` (default: `1`)
 - `PIRATEBOX_EPD_FULL_REFRESH_EVERY` (default: `10`)
+- `PIRATEBOX_EPD_PAGES` (default: `status,network,piratebox`; also `dashboard`)
+- `PIRATEBOX_EPD_ORIENTATION` (default: `auto`; also `portrait`, `landscape`)
+- `PIRATEBOX_EPD_MIN_REFRESH` (default: `0`, or `180` on tri-color panels)
+- `PIRATEBOX_EPD_MAX_AGE` (default: `3600` seconds; `0` disables)
+- `PIRATEBOX_EPD_ENABLE` (default: `0`; first-boot image only)
+- `PIRATEBOX_WIFI_IFACE` (default: `wlan0`; used to count connected clients)
 
 ## Wireless settings
 
@@ -60,7 +66,15 @@ If you use `scripts/pi-setup.sh`, the following environment variables control th
 - `PIRATEBOX_DHCP_END` (default: `10.0.0.200`)
 - `PIRATEBOX_CHANNEL` (default: `6`)
 - `PIRATEBOX_HW_MODE` (default: `g`)
-- `PIRATEBOX_COUNTRY_CODE` (default: empty)
+- `PIRATEBOX_COUNTRY_CODE` (default: empty; also `--country`)
+
+`pi-setup.sh` only installs Docker when you pass `--run-compose`.
+
+## Pi Zero W settings
+
+The [Pi Zero W Edition](Pi-Zero-W.md) reads `piratebox.txt` from the boot partition on first boot
+(`SSID`, `COUNTRY`, `EPD_ROTATE`, `EPD_ENABLE`) and ships its own defaults in `scripts/zero/`.
+It also sets `TMPDIR=/var/lib/piratebox/tmp` so uploads do not spool into a RAM-backed `/tmp`.
 
 ## The cynical truth
 

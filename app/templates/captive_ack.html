@@ -13,7 +13,8 @@
 </section>
 <script>
   (function () {
-    const target = "{{ next_url }}";
+    // tojson, not quotes: HTML escaping inside a script tag only escapes your hopes.
+    const target = {{ next_url | tojson }};
     try {
       window.open(target, "_blank");
     } catch (err) {

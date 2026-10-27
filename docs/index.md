@@ -9,6 +9,7 @@ PirateBox is a local-only sharing box for Raspberry Pi. You join an open Wi-Fi, 
 - [Overview](Overview.md)
 - [Install on Raspberry Pi](Install-Raspberry-Pi.md)
 - [Prebuilt Image](Prebuilt-Image.md)
+- [Pi Zero W Edition](Pi-Zero-W.md)
 - [Architecture](Architecture.md)
 - [Configuration](Configuration.md)
 - [Operations](Operations.md)

@@ -8,6 +8,8 @@ ConditionPathExists=!/var/lib/piratebox/.firstboot_done
 
 [Service]
 Type=oneshot
+EnvironmentFile=-/etc/default/piratebox
+EnvironmentFile=-/etc/default/piratebox-epaper
 ExecStart=/usr/local/sbin/piratebox-firstboot
 RemainAfterExit=yes
 

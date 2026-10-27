@@ -1,0 +1,14 @@
+# PirateBox Zero W first boot unit.
+# Turns a Pi that joined a Wi-Fi into a Pi that is the Wi-Fi. Runs once, then retires.
+[Unit]
+Description=PirateBox Zero W first boot provisioning
+After=NetworkManager.service systemd-rfkill.service
+ConditionPathExists=!/var/lib/piratebox/.zero_firstboot_done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/piratebox-zero-firstboot
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

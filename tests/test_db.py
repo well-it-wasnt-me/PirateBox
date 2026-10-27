@@ -89,3 +89,30 @@ def test_forum_threads_and_posts(storage):
 
     posts = db.list_posts(thread_id)
     assert len(posts) == 2
+
+
+def test_list_recent_chat_messages(storage):
+    """Recent messages come back newest slice, oldest first."""
+    ids = [db.insert_chat_message("Bot", f"m{idx}").id for idx in range(5)]
+
+    recent = db.list_recent_chat_messages(limit=2)
+    assert [m.id for m in recent] == ids[-2:]
+
+
+def test_store_upload_returns_what_was_stored(storage):
+    """The returned record should match the row, timestamps included."""
+    record = db.store_upload(io.BytesIO(b"same"), "same.txt")
+    assert db.get_file(record.id) == record
+
+
+def test_store_upload_cleans_up_when_db_fails(storage, monkeypatch):
+    """A failed insert should not leave an orphan file squatting on disk."""
+
+    def boom(**_kwargs):
+        raise RuntimeError("db on fire")
+
+    monkeypatch.setattr(db, "insert_file", boom)
+    with pytest.raises(RuntimeError):
+        db.store_upload(io.BytesIO(b"x"), "orphan.txt")
+
+    assert list(db.FILES_DIR.glob("*")) == []

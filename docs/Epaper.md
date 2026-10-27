@@ -2,6 +2,9 @@
 
 PirateBox can drive a 2.7 inch e-Paper HAT (264x176, Rev 2.1) to show the PirateBox logo plus local stats (CPU, temp, disk, IP, counts). It also supports four hardware buttons if you wire them and configure GPIO pins.
 
+It also drives the Waveshare 2.13 inch e-Paper HAT (B) V4 (250x122, black/white/red, no buttons) used by the
+[Pi Zero W Edition](Pi-Zero-W.md), which sets all of this up for you. Red is used for things that deserve attention.
+
 ## Hardware notes
 
 - Enable SPI on the Pi (`raspi-config` -> Interface Options -> SPI).
@@ -41,6 +44,9 @@ Logo path can be overridden with `--logo` or `PIRATEBOX_EPD_LOGO`.
 Driver preference can be forced with `--driver waveshare_epd` or `PIRATEBOX_EPD_DRIVER=waveshare_epd`.
 If the Waveshare library is installed, the script tries `epd2in7` first, then `epd2in7_V2`.
 Override with `PIRATEBOX_EPD_WAVESHARE_MODULE=epd2in7_V2` (or `epd2in7`) if your panel needs it.
+For the 2.13 inch (B) V4 use `PIRATEBOX_EPD_WAVESHARE_MODULE=epd2in13b_V4`. Panels cannot be auto-detected:
+initializing the wrong driver just waits on a busy pin forever, which looks a lot like a blank screen.
+Tri-color modules are detected by their two-layer `display()` and drawn in black and red.
 You can also set `PIRATEBOX_EPD_FONT=/path/to/font.ttf` to use a specific TTF font.
 
 ## Refresh behavior
@@ -62,6 +68,43 @@ PIRATEBOX_EPD_REFRESH_IP=1
 ```
 
 When enabled, the display only refreshes if those deltas are exceeded or a button forces it.
+A delta of `0` refreshes on any change; a negative delta ignores that metric completely.
+
+Two more timers keep things honest:
+
+```bash
+PIRATEBOX_EPD_MAX_AGE=3600     # redraw at least this often (seconds), even if nothing changed; 0 disables
+PIRATEBOX_EPD_MIN_REFRESH=180  # never redraw more often than this (seconds); defaults to 180 on tri-color panels
+```
+
+Tri-color panels have no partial refresh, take about 15 seconds per frame, and are put into deep sleep after
+every refresh, as Waveshare recommends. Button presses still refresh immediately.
+
+## Pages and orientation
+
+Pick which pages to show, in order:
+
+```bash
+PIRATEBOX_EPD_PAGES=status,network,piratebox   # default
+PIRATEBOX_EPD_PAGES=dashboard                  # everything on one page, made for small screens
+```
+
+With buttons, K1-K3 jump to the first three pages and K4 sleeps the display; the footer labels follow the
+configured pages. Without buttons, the footer disappears and multiple pages rotate on every refresh.
+
+`PIRATEBOX_EPD_ORIENTATION` can be `auto` (the driver's native orientation), `portrait` or `landscape`.
+`PIRATEBOX_EPD_ROTATE` still rotates the final image if the panel is mounted upside down.
+
+## Preview without hardware
+
+Render the pages to PNG files on any machine with Pillow:
+
+```bash
+python3 scripts/epaper_hat.py --preview /tmp/epd --preview-size 250x122 --pages dashboard,status
+python3 scripts/epaper_hat.py --preview /tmp/epd --preview-size 176x264
+```
+
+Red shows up as red in the PNGs. Mono panels print it as black and nobody is the wiser.
 
 ## Buttons (optional)
 
@@ -96,6 +139,8 @@ sudo nano /etc/systemd/system/piratebox-epaper.service
 ```
 
 The unit expects a venv at `/opt/piratebox/.venv` by default. Adjust `ExecStart=` if you live elsewhere.
+It reads `/etc/default/piratebox` before `/etc/default/piratebox-epaper`, so the display counts the same
+database the web app writes to.
 
 2. (Optional) Create an environment file for overrides:
 
@@ -140,5 +185,7 @@ Run with `--debug` and watch for driver selection logs. If nothing shows up, the
 - CPU temp: `/sys/class/thermal/thermal_zone0/temp`
 - CPU usage: `/proc/stat`
 - Memory: `/proc/meminfo`
-- Disk: filesystem stats on `PIRATEBOX_DATA_DIR`
+- Disk: filesystem stats on `PIRATEBOX_DATA_DIR` (or its closest existing parent)
 - PirateBox counts: SQLite at `PIRATEBOX_DB_PATH`
+- SSID: `/etc/hostapd/hostapd.conf`
+- Connected clients: `iw dev $PIRATEBOX_WIFI_IFACE station dump`

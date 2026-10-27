@@ -5,11 +5,14 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import inspect
 import os
+import signal
 import socket
 import sqlite3
 import subprocess
 import sys
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -20,7 +23,19 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_LOGO = ROOT_DIR / "app" / "static" / "images" / "PirateBoxLogo2.png"
 DEFAULT_BUTTON_PINS = "5,6,13,19"
-FOOTER_HINTS = ("K1 STAT", "K2 NET", "K3 BOX", "K4 SLEEP")
+DEFAULT_PAGES = "status,network,piratebox"
+HOSTAPD_CONF = Path("/etc/hostapd/hostapd.conf")
+PAGE_HINTS = {"status": "STAT", "network": "NET", "piratebox": "BOX", "dashboard": "DASH"}
+
+# Drivers fetched by the installers live here, next to the regret.
+VENDOR_DIR = ROOT_DIR / "vendor"
+if VENDOR_DIR.is_dir() and str(VENDOR_DIR) not in sys.path:
+    sys.path.insert(0, str(VENDOR_DIR))
+
+# Canvas palette indices. Mono panels print red as black and pretend it was intentional.
+BLACK = 0
+RED = 1
+WHITE = 255
 
 
 @dataclass
@@ -32,13 +47,28 @@ class DisplayDriver:
     init: Callable[[], None]
     sleep: Callable[[], None]
     clear: Callable[[], None]
-    draw: Callable[[Image.Image, bool], None]
+    draw: Callable[[Image.Image, Optional[Image.Image], bool], None]
+    color: bool = False
+    min_refresh: int = 0
 
 
 def _debug(enabled: bool, message: str) -> None:
     """Emit debug output when someone explicitly asked for it."""
     if enabled:
         print(f"[epaper] {message}", file=sys.stderr, flush=True)
+
+
+def _positional_arity(func: Callable[..., object]) -> int:
+    """Count positional parameters, because driver APIs are a choose-your-own-adventure."""
+    try:
+        params = inspect.signature(func).parameters.values()
+    except (TypeError, ValueError):
+        return 0
+    return sum(
+        1
+        for param in params
+        if param.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+    )
 
 
 def _load_driver(preferred: str, debug: bool = False) -> DisplayDriver:
@@ -70,7 +100,7 @@ def _load_driver(preferred: str, debug: bool = False) -> DisplayDriver:
                 elif hasattr(epd, "clear_screen"):
                     epd.clear_screen()
 
-            def _draw(image: Image.Image, full: bool) -> None:
+            def _draw(image: Image.Image, _red: Optional[Image.Image], full: bool) -> None:
                 """Draw an image using whatever rpi_epd2in7 exposes."""
                 if full and hasattr(epd, "display_frame"):
                     epd.display_frame(image)
@@ -101,6 +131,9 @@ def _load_driver(preferred: str, debug: bool = False) -> DisplayDriver:
             "epd2in7": "epd2in7",
             "epd2in7_v2": "epd2in7_V2",
             "v2": "epd2in7_V2",
+            "epd2in13b_v4": "epd2in13b_V4",
+            "2in13b_v4": "epd2in13b_V4",
+            "2in13b": "epd2in13b_V4",
         }
         if module_hint:
             module_name = module_map.get(module_hint.lower(), module_hint)
@@ -120,7 +153,10 @@ def _load_driver(preferred: str, debug: bool = False) -> DisplayDriver:
             try:
                 epd = module.EPD()  # type: ignore[attr-defined]
                 epd.init()
+                awake = True
                 partial_ready = False
+                # Tri-color panels take a black and a red buffer. Mono ones take one and a hint.
+                color = _positional_arity(epd.display) >= 2
 
                 def _pick_method(names: tuple[str, ...]) -> Optional[Callable[..., None]]:
                     """Find the first callable method in a list of names."""
@@ -136,18 +172,48 @@ def _load_driver(preferred: str, debug: bool = False) -> DisplayDriver:
                 partial_display = _pick_method(
                     ("display_partial", "display_Partial", "display_fast", "display_Fast", "displayPartial")
                 )
-                if partial_display:
+                clear_method = _pick_method(("Clear", "clear"))
+                if partial_display and not color:
                     _debug(debug, f"Partial refresh supported via {partial_display.__name__}")
                 else:
                     _debug(debug, "Partial refresh not supported; using full refresh only")
 
+                def _init() -> None:
+                    """Wake the panel; any partial-refresh setup died with the last sleep."""
+                    nonlocal awake, partial_ready
+                    epd.init()
+                    awake = True
+                    partial_ready = False
+
+                def _sleep() -> None:
+                    """Deep-sleep the panel once. Twice just yells at a closed SPI bus."""
+                    nonlocal awake
+                    if awake:
+                        epd.sleep()
+                        awake = False
+
                 def _clear() -> None:
                     """Clear the Waveshare display to white."""
-                    epd.Clear(0xFF)
+                    if not awake:
+                        _init()
+                    if clear_method is None:
+                        return
+                    if _positional_arity(clear_method) >= 1:
+                        clear_method(0xFF)
+                    else:
+                        clear_method()
 
-                def _draw(image: Image.Image, full: bool) -> None:
+                def _draw(image: Image.Image, red: Optional[Image.Image], full: bool) -> None:
                     """Draw using full or partial refresh when available."""
                     nonlocal partial_ready
+                    if not awake:
+                        _init()
+                    if color:
+                        red_layer = red if red is not None else Image.new("1", image.size, 255)
+                        epd.display(epd.getbuffer(image), epd.getbuffer(red_layer))
+                        # Tri-color panels want deep sleep between refreshes, or they slowly cook.
+                        _sleep()
+                        return
                     buffer = epd.getbuffer(image)
                     if not full and partial_display:
                         if partial_init and not partial_ready:
@@ -160,15 +226,18 @@ def _load_driver(preferred: str, debug: bool = False) -> DisplayDriver:
                         partial_ready = False
                     epd.display(buffer)
 
-                _debug(debug, f"Using waveshare module: {module_name}")
+                _debug(debug, f"Using waveshare module: {module_name} (color={color})")
                 return DisplayDriver(
                     epd=epd,
                     width=int(getattr(epd, "width", 176)),
                     height=int(getattr(epd, "height", 264)),
-                    init=epd.init,
-                    sleep=epd.sleep,
+                    init=_init,
+                    sleep=_sleep,
                     clear=_clear,
                     draw=_draw,
+                    color=color,
+                    # Waveshare says three-color panels need at least 180s between refreshes.
+                    min_refresh=180 if color else 0,
                 )
             except Exception as exc:
                 _record(exc, f"waveshare_epd {module_name} init")
@@ -261,6 +330,7 @@ class State:
     page: int = 0
     sleeping: bool = False
     force_refresh: bool = False
+    sleep_requested: bool = False
 
     def set_page(self, page: int, total: int) -> None:
         """Set the page within bounds and force a refresh."""
@@ -278,39 +348,33 @@ class State:
         self.page = (self.page - 1) % total
         self.force_refresh = True
 
-    def toggle_sleep(self, driver: DisplayDriver) -> None:
-        """Toggle sleep state and reset the display if waking up."""
-        if self.sleeping:
-            driver.init()
-            self.sleeping = False
-        else:
-            driver.sleep()
-            self.sleeping = True
-        self.force_refresh = True
-
 
 @dataclass
 class ButtonHandler:
-    """Map button presses to state transitions."""
+    """Map button presses to state changes; the main loop does the actual SPI talking."""
     state: State
     total_pages: int
-    driver: DisplayDriver
+    wake: threading.Event
 
     def on_status(self) -> None:
-        """Jump to the status page."""
+        """Jump to the first page."""
         self.state.set_page(0, self.total_pages)
+        self.wake.set()
 
     def on_network(self) -> None:
-        """Jump to the network page."""
+        """Jump to the second page."""
         self.state.set_page(1, self.total_pages)
+        self.wake.set()
 
     def on_piratebox(self) -> None:
-        """Jump to the PirateBox stats page."""
+        """Jump to the third page."""
         self.state.set_page(2, self.total_pages)
+        self.wake.set()
 
     def on_sleep(self) -> None:
-        """Put the display to sleep or wake it back up."""
-        self.state.toggle_sleep(self.driver)
+        """Ask the main loop to sleep or wake the display. Callbacks touching SPI cause ghosts."""
+        self.state.sleep_requested = True
+        self.wake.set()
 
 
 class ButtonWatcher:
@@ -321,6 +385,12 @@ class ButtonWatcher:
         self._gpio = None
         self._buttons = []
         self._last_states: list[int] = []
+        self._callbacks = [
+            handler.on_status,
+            handler.on_network,
+            handler.on_piratebox,
+            handler.on_sleep,
+        ]
 
         if not config.pins:
             return
@@ -332,17 +402,17 @@ class ButtonWatcher:
                 btn = Button(pin, pull_up=config.pull_up, bounce_time=0.05)
                 self._buttons.append(btn)
 
-            callbacks = [
-                handler.on_status,
-                handler.on_network,
-                handler.on_piratebox,
-                handler.on_sleep,
-            ]
-            for btn, cb in zip(self._buttons, callbacks):
+            for btn, cb in zip(self._buttons, self._callbacks):
                 btn.when_pressed = cb
             return
         except Exception:
-            pass
+            # Half-built gpiozero buttons would hog the pins the fallback needs.
+            for btn in self._buttons:
+                try:
+                    btn.close()
+                except Exception:
+                    pass
+            self._buttons = []
 
         try:
             import RPi.GPIO as GPIO  # type: ignore
@@ -359,27 +429,50 @@ class ButtonWatcher:
         except Exception:
             self._gpio = None
 
+    @property
+    def active(self) -> bool:
+        """Whether any button can actually be pressed, as opposed to merely configured."""
+        return bool(self._buttons) or self._gpio is not None
+
+    @property
+    def poll_interval(self) -> Optional[float]:
+        """Seconds between polls for the RPi.GPIO fallback; None when callbacks do the work."""
+        return 0.05 if self._gpio else None
+
     def poll(self) -> None:
         """Poll buttons when using the RPi.GPIO fallback."""
         if not self._gpio:
             return
 
-        callbacks = [
-            self.handler.on_status,
-            self.handler.on_network,
-            self.handler.on_piratebox,
-            self.handler.on_sleep,
-        ]
         for idx, pin in enumerate(self.config.pins):
             current = self._gpio.input(pin)
-            if self._last_states[idx] == 1 and current == 0:
-                callbacks[idx]()
+            if self._last_states[idx] == 1 and current == 0 and idx < len(self._callbacks):
+                self._callbacks[idx]()
             self._last_states[idx] = current
 
     def close(self) -> None:
         """Release GPIO resources when exiting."""
+        for btn in self._buttons:
+            try:
+                btn.close()
+            except Exception:
+                pass
         if self._gpio:
             self._gpio.cleanup()
+
+
+def _wait(buttons: ButtonWatcher, wake: threading.Event, seconds: float) -> None:
+    """Nap until the interval ends or a button demands attention."""
+    deadline = time.monotonic() + max(0.0, seconds)
+    while True:
+        buttons.poll()
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        step = buttons.poll_interval
+        if wake.wait(remaining if step is None else min(remaining, step)):
+            break
+    wake.clear()
 
 
 @dataclass
@@ -397,6 +490,9 @@ class Stats:
     threads: int
     posts: int
     timestamp: str
+    chats: int = 0
+    clients: Optional[int] = None
+    ssid: str = ""
 
 
 @dataclass
@@ -454,8 +550,10 @@ def _percent(value: int, total: int) -> float:
 
 
 def _delta_exceeds(delta: float, threshold: float) -> bool:
-    """Check whether a delta crosses the configured threshold."""
-    if threshold <= 0:
+    """Check whether a delta crosses the threshold. Negative means stop caring entirely."""
+    if threshold < 0:
+        return False
+    if threshold == 0:
         return delta != 0.0
     return abs(delta) >= threshold
 
@@ -478,11 +576,19 @@ def _stats_changed(prev: Optional[Stats], curr: Stats, policy: RefreshPolicy) ->
     if _delta_exceeds(disk_delta, policy.disk_delta):
         return True
     if policy.count_delta > 0:
-        if abs(curr.files - prev.files) >= policy.count_delta:
-            return True
-        if abs(curr.threads - prev.threads) >= policy.count_delta:
-            return True
-        if abs(curr.posts - prev.posts) >= policy.count_delta:
+        counts = (
+            (curr.files, prev.files),
+            (curr.threads, prev.threads),
+            (curr.posts, prev.posts),
+            (curr.chats, prev.chats),
+        )
+        for current, previous in counts:
+            if abs(current - previous) >= policy.count_delta:
+                return True
+        if curr.clients is None or prev.clients is None:
+            if curr.clients != prev.clients:
+                return True
+        elif abs(curr.clients - prev.clients) >= policy.count_delta:
             return True
     if policy.ip_change and curr.ip != prev.ip:
         return True
@@ -510,9 +616,10 @@ def _read_cpu_usage(prev: Optional[tuple[int, int]]) -> tuple[float, tuple[int, 
 def _read_cpu_temp() -> Optional[float]:
     """Read CPU temperature if the kernel exposes it."""
     path = Path("/sys/class/thermal/thermal_zone0/temp")
-    if not path.exists():
+    try:
+        raw = path.read_text().strip()
+    except OSError:
         return None
-    raw = path.read_text().strip()
     try:
         return float(raw) / 1000.0
     except ValueError:
@@ -534,8 +641,12 @@ def _read_mem() -> tuple[int, int]:
 
 
 def _read_disk(path: Path) -> tuple[int, int]:
-    """Return used and total disk bytes for the given path."""
-    stat = os.statvfs(path)
+    """Return used and total disk bytes for the path, or its closest parent that exists."""
+    # A data dir that does not exist yet still lives on some disk. Crash-looping helps nobody.
+    target = path
+    while not target.exists() and target != target.parent:
+        target = target.parent
+    stat = os.statvfs(target)
     total = stat.f_frsize * stat.f_blocks
     used = total - stat.f_frsize * stat.f_bfree
     return used, total
@@ -558,7 +669,7 @@ def _read_uptime() -> str:
 def _read_ip() -> str:
     """Attempt to find a local IP without committing to the truth."""
     try:
-        result = subprocess.check_output(["hostname", "-I"], text=True).strip()
+        result = subprocess.check_output(["hostname", "-I"], text=True, stderr=subprocess.DEVNULL).strip()
         if result:
             return result.split()[0]
     except Exception:
@@ -569,18 +680,44 @@ def _read_ip() -> str:
         return "unknown"
 
 
-def _read_counts(db_path: Path) -> tuple[int, int, int]:
-    """Count files, threads, and posts in the SQLite DB."""
+def _read_ssid(conf_path: Path = HOSTAPD_CONF) -> str:
+    """Read the broadcast SSID from hostapd, the only witness that matters."""
+    try:
+        for line in conf_path.read_text(encoding="utf-8", errors="replace").splitlines():
+            if line.startswith("ssid="):
+                return line.split("=", 1)[1].strip()
+    except OSError:
+        pass
+    return os.getenv("PIRATEBOX_SSID", "")
+
+
+def _read_clients(iface: str) -> Optional[int]:
+    """Count stations on the access point, or None when iw is not talking to us."""
+    try:
+        output = subprocess.check_output(
+            ["iw", "dev", iface, "station", "dump"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+            timeout=5,
+        )
+    except Exception:
+        return None
+    return sum(1 for line in output.splitlines() if line.startswith("Station "))
+
+
+def _read_counts(db_path: Path) -> tuple[int, int, int, int]:
+    """Count files, threads, posts, and chat messages in the SQLite DB."""
     if not db_path.exists():
-        return 0, 0, 0
+        return 0, 0, 0, 0
     try:
         with sqlite3.connect(db_path) as conn:
             files = conn.execute("SELECT COUNT(*) FROM files").fetchone()[0]
             threads = conn.execute("SELECT COUNT(*) FROM forum_threads").fetchone()[0]
             posts = conn.execute("SELECT COUNT(*) FROM forum_posts").fetchone()[0]
-        return int(files), int(threads), int(posts)
+            chats = conn.execute("SELECT COUNT(*) FROM chat_messages").fetchone()[0]
+        return int(files), int(threads), int(posts), int(chats)
     except sqlite3.Error:
-        return 0, 0, 0
+        return 0, 0, 0, 0
 
 
 def _format_bytes(value: int) -> str:
@@ -594,6 +731,15 @@ def _format_bytes(value: int) -> str:
     return f"{size:.1f}PB"
 
 
+def _logo_box(width: int, height: int) -> tuple[int, int]:
+    """Pick a logo bounding box that leaves room for actual information."""
+    short_side = min(width, height)
+    if short_side >= 176:
+        return 64, 64
+    # Small panels get a wide, short logo; the PNG is wider than it is tall anyway.
+    return max(32, int(short_side * 0.6)), max(24, int(short_side * 0.36))
+
+
 def _load_logo(path: Path, max_size: tuple[int, int]) -> Optional[Image.Image]:
     """Load and resize the logo for the EPD."""
     if not path.exists():
@@ -602,13 +748,36 @@ def _load_logo(path: Path, max_size: tuple[int, int]) -> Optional[Image.Image]:
         logo = Image.open(path)
     except Exception:
         return None
+    # Grayscale first: thumbnailing a palette image quietly falls back to nearest-neighbour.
+    logo = logo.convert("L")
     logo.thumbnail(max_size, Image.LANCZOS)
     return logo.convert("1")
 
 
 def _prepare_canvas(width: int, height: int) -> Image.Image:
-    """Create a blank 1-bit canvas."""
-    return Image.new("1", (width, height), 255)
+    """Create a blank paletted canvas: white paper, black ink, red for emergencies."""
+    canvas = Image.new("P", (width, height), WHITE)
+    palette = [255, 255, 255] * 256
+    palette[BLACK * 3:BLACK * 3 + 3] = [0, 0, 0]
+    palette[RED * 3:RED * 3 + 3] = [255, 0, 0]
+    canvas.putpalette(palette)
+    return canvas
+
+
+def _split_layers(canvas: Image.Image, color: bool) -> tuple[Image.Image, Optional[Image.Image]]:
+    """Split the canvas into 1-bit black and red layers. Mono panels get red as black."""
+    if not color:
+        return canvas.point(lambda idx: 0 if idx in (BLACK, RED) else 255, "1"), None
+    black = canvas.point(lambda idx: 0 if idx == BLACK else 255, "1")
+    red = canvas.point(lambda idx: 0 if idx == RED else 255, "1")
+    return black, red
+
+
+def _paste_mono(image: Image.Image, mono: Image.Image, xy: tuple[int, int], ink: int = BLACK) -> None:
+    """Stamp the black pixels of a 1-bit image onto the canvas in the given ink."""
+    mask = Image.eval(mono.convert("L"), lambda value: 255 - value)
+    x, y = xy
+    image.paste(ink, (x, y, x + mono.width, y + mono.height), mask)
 
 
 @dataclass
@@ -619,6 +788,7 @@ class Fonts:
     medium: ImageFont.ImageFont
     large: ImageFont.ImageFont
     huge: ImageFont.ImageFont
+    bold: ImageFont.ImageFont
 
 
 @dataclass
@@ -628,6 +798,7 @@ class Layout:
     gutter: int
     header_h: int
     footer_h: int
+    footer_hints: tuple[str, ...] = ()
 
 
 def _font_height(font: ImageFont.ImageFont) -> int:
@@ -648,15 +819,20 @@ def _text_width(font: ImageFont.ImageFont, text: str) -> int:
         return font.getsize(text)[0]
 
 
+def _scale(width: int, height: int) -> float:
+    """Scale factor relative to the 2.7 inch panel. Smaller panels shrink, sadly."""
+    return min(width, height) / 176.0
+
+
 def _load_fonts(width: int, height: int) -> Fonts:
     """Load fonts with reasonable fallbacks and size scaling."""
-    base = max(1.0, min(width, height) / 176.0)
+    base = _scale(width, height)
     sizes = {
-        "tiny": max(9, int(10 * base)),
-        "small": max(11, int(12 * base)),
-        "medium": max(13, int(15 * base)),
-        "large": max(16, int(20 * base)),
-        "huge": max(20, int(26 * base)),
+        "tiny": max(8, int(10 * base)),
+        "small": max(10, int(12 * base)),
+        "medium": max(12, int(15 * base)),
+        "large": max(14, int(20 * base)),
+        "huge": max(18, int(26 * base)),
     }
     font_hint = os.getenv("PIRATEBOX_EPD_FONT", "").strip()
     candidates = [
@@ -665,10 +841,16 @@ def _load_fonts(width: int, height: int) -> Fonts:
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
     ]
+    bold_candidates = [
+        os.getenv("PIRATEBOX_EPD_FONT_BOLD", "").strip(),
+        "DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+    ] + candidates
 
-    def _try_font(size: int) -> ImageFont.ImageFont:
+    def _try_font(size: int, paths: list[str] = candidates) -> ImageFont.ImageFont:
         """Load the first available font or fall back to default."""
-        for path in candidates:
+        for path in paths:
             if not path:
                 continue
             try:
@@ -683,17 +865,30 @@ def _load_fonts(width: int, height: int) -> Fonts:
         medium=_try_font(sizes["medium"]),
         large=_try_font(sizes["large"]),
         huge=_try_font(sizes["huge"]),
+        bold=_try_font(sizes["large"], bold_candidates),
     )
 
 
-def _make_layout(fonts: Fonts, width: int, height: int) -> Layout:
-    """Compute layout metrics based on screen size."""
-    base = max(1.0, min(width, height) / 176.0)
+def _make_layout(fonts: Fonts, width: int, height: int, hints: tuple[str, ...] = ()) -> Layout:
+    """Compute layout metrics based on screen size. No buttons, no footer, no lies."""
+    base = _scale(width, height)
     margin = max(4, int(6 * base))
     gutter = max(3, int(4 * base))
     header_h = _font_height(fonts.medium) + gutter * 2
-    footer_h = _font_height(fonts.tiny) + gutter * 2
-    return Layout(margin=margin, gutter=gutter, header_h=header_h, footer_h=footer_h)
+    footer_h = _font_height(fonts.tiny) + gutter * 2 if hints else 0
+    return Layout(margin=margin, gutter=gutter, header_h=header_h, footer_h=footer_h, footer_hints=hints)
+
+
+def _footer_hints(page_names: list[str], button_count: int) -> tuple[str, ...]:
+    """Label the keys with what they actually do, not what they did in 2.7-inch land."""
+    hints = [
+        f"K{idx + 1} {PAGE_HINTS.get(name, name.upper())}"
+        for idx, name in enumerate(page_names[:3])
+        if idx < button_count
+    ]
+    if button_count >= 4:
+        hints.append("K4 SLEEP")
+    return tuple(hints)
 
 
 def _draw_header(
@@ -703,15 +898,16 @@ def _draw_header(
     timestamp: str,
     fonts: Fonts,
     layout: Layout,
+    fill: int = BLACK,
 ) -> None:
     """Draw the header bar with title and timestamp."""
-    draw.rectangle((0, 0, width, layout.header_h), fill=0)
+    draw.rectangle((0, 0, width, layout.header_h), fill=fill)
     title_y = (layout.header_h - _font_height(fonts.medium)) // 2
-    draw.text((layout.margin, title_y), title, font=fonts.medium, fill=255)
+    draw.text((layout.margin, title_y), title, font=fonts.medium, fill=WHITE)
     if timestamp:
         stamp_w = _text_width(fonts.small, timestamp)
         stamp_y = (layout.header_h - _font_height(fonts.small)) // 2
-        draw.text((width - layout.margin - stamp_w, stamp_y), timestamp, font=fonts.small, fill=255)
+        draw.text((width - layout.margin - stamp_w, stamp_y), timestamp, font=fonts.small, fill=WHITE)
 
 
 def _draw_footer(
@@ -720,14 +916,15 @@ def _draw_footer(
     height: int,
     fonts: Fonts,
     layout: Layout,
-    hints: tuple[str, ...] = FOOTER_HINTS,
 ) -> None:
-    """Draw the footer with button hints."""
+    """Draw the footer with button hints, if there are buttons worth hinting at."""
+    if not layout.footer_hints:
+        return
     y0 = height - layout.footer_h
-    draw.rectangle((0, y0, width, height), fill=0)
-    text = "  ".join(hints)
+    draw.rectangle((0, y0, width, height), fill=BLACK)
+    text = "  ".join(layout.footer_hints)
     text_y = y0 + (layout.footer_h - _font_height(fonts.tiny)) // 2
-    draw.text((layout.margin, text_y), text, font=fonts.tiny, fill=255)
+    draw.text((layout.margin, text_y), text, font=fonts.tiny, fill=WHITE)
 
 
 def _draw_labeled_bar(
@@ -740,19 +937,26 @@ def _draw_labeled_bar(
     percent: float,
     fonts: Fonts,
     layout: Layout,
+    fill: int = BLACK,
 ) -> int:
     """Draw a labeled usage bar and return the next y coordinate."""
-    draw.text((x, y), label, font=fonts.small, fill=0)
+    draw.text((x, y), label, font=fonts.small, fill=BLACK)
     if value_text:
-        value_w = _text_width(fonts.small, value_text)
-        draw.text((x + width - value_w, y), value_text, font=fonts.small, fill=0)
+        # Narrow columns next to a logo used to print label and value on top of each other.
+        room = width - _text_width(fonts.small, label) - layout.gutter
+        if _text_width(fonts.tiny, value_text) > room:
+            value_text = f"{percent:.0f}%"
+        value_font = _fit_font(value_text, room, fonts.small, fonts.tiny)
+        value_w = _text_width(value_font, value_text)
+        value_y = y + _font_height(fonts.small) - _font_height(value_font)
+        draw.text((x + width - value_w, value_y), value_text, font=value_font, fill=BLACK)
     y += _font_height(fonts.small) + 1
     bar_h = max(6, _font_height(fonts.tiny))
-    draw.rectangle((x, y, x + width, y + bar_h), outline=0, fill=255)
+    draw.rectangle((x, y, x + width, y + bar_h), outline=BLACK, fill=WHITE)
     clamped = max(0.0, min(percent, 100.0))
     fill_w = int(width * clamped / 100.0)
     if fill_w:
-        draw.rectangle((x, y, x + fill_w, y + bar_h), fill=0)
+        draw.rectangle((x, y, x + fill_w, y + bar_h), fill=fill)
     return y + bar_h + layout.gutter
 
 
@@ -760,8 +964,16 @@ def _center_text(draw: ImageDraw.ImageDraw, width: int, y: int, text: str, font:
     """Center text horizontally and return the next y coordinate."""
     text_w = _text_width(font, text)
     x = max(0, (width - text_w) // 2)
-    draw.text((x, y), text, font=font, fill=0)
+    draw.text((x, y), text, font=font, fill=BLACK)
     return y + _font_height(font) + 1
+
+
+def _fit_font(text: str, max_width: int, *fonts: ImageFont.ImageFont) -> ImageFont.ImageFont:
+    """Return the first font that fits, or the last one and a prayer."""
+    for font in fonts:
+        if _text_width(font, text) <= max_width:
+            return font
+    return fonts[-1]
 
 
 def _render_status(
@@ -782,7 +994,7 @@ def _render_status(
     if logo:
         logo_x = image.width - layout.margin - logo.width
         logo_y = y
-        image.paste(logo, (logo_x, logo_y))
+        _paste_mono(image, logo, (logo_x, logo_y))
         right_edge = max(x + 10, logo_x - layout.gutter)
 
     col_width = max(10, right_edge - x)
@@ -823,11 +1035,12 @@ def _render_status(
         disk_percent,
         fonts,
         layout,
+        fill=RED if disk_percent >= 90 else BLACK,
     )
 
-    draw.text((x, y), f"UP {stats.uptime}", font=fonts.small, fill=0)
+    draw.text((x, y), f"UP {stats.uptime}", font=fonts.small, fill=BLACK)
     y += _font_height(fonts.small) + layout.gutter
-    draw.text((x, y), f"IP {stats.ip}", font=fonts.small, fill=0)
+    draw.text((x, y), f"IP {stats.ip}", font=fonts.small, fill=BLACK)
 
 
 def _render_network(
@@ -843,7 +1056,7 @@ def _render_network(
     _draw_footer(draw, image.width, image.height, fonts, layout)
 
     y = layout.header_h + layout.gutter
-    draw.text((layout.margin, y), f"HOST {hostname}", font=fonts.small, fill=0)
+    draw.text((layout.margin, y), f"HOST {hostname}", font=fonts.small, fill=BLACK)
     y += _font_height(fonts.small) + layout.gutter
 
     ip_text = stats.ip if stats.ip else "unknown"
@@ -851,9 +1064,9 @@ def _render_network(
     y += layout.gutter
 
     http_line = f"http://{ip_text}" if ip_text != "unknown" else "http://pirate.box"
-    draw.text((layout.margin, y), f"HTTP {http_line}", font=fonts.small, fill=0)
+    draw.text((layout.margin, y), f"HTTP {http_line}", font=fonts.small, fill=BLACK)
     y += _font_height(fonts.small) + layout.gutter
-    draw.text((layout.margin, y), "INTERNET: NO, BY DESIGN.", font=fonts.small, fill=0)
+    draw.text((layout.margin, y), "INTERNET: NO, BY DESIGN.", font=fonts.small, fill=BLACK)
 
 
 def _render_piratebox(image: Image.Image, stats: Stats, fonts: Fonts, layout: Layout) -> None:
@@ -864,20 +1077,144 @@ def _render_piratebox(image: Image.Image, stats: Stats, fonts: Fonts, layout: La
 
     y = layout.header_h + layout.gutter
     for label, value in (("FILES", stats.files), ("THREADS", stats.threads), ("POSTS", stats.posts)):
-        draw.text((layout.margin, y), label, font=fonts.small, fill=0)
+        draw.text((layout.margin, y), label, font=fonts.small, fill=BLACK)
         y += _font_height(fonts.small)
-        draw.text((layout.margin, y), str(value), font=fonts.large, fill=0)
+        draw.text((layout.margin, y), str(value), font=fonts.large, fill=BLACK)
         y += _font_height(fonts.large) + layout.gutter
 
     y = min(y, image.height - layout.footer_h - _font_height(fonts.small) - layout.gutter)
-    draw.text((layout.margin, y), "LOCAL ONLY. NO CLOUD.", font=fonts.small, fill=0)
+    draw.text((layout.margin, y), "LOCAL ONLY. NO CLOUD.", font=fonts.small, fill=BLACK)
 
 
-PAGES = (
-    ("status", _render_status),
-    ("network", _render_network),
-    ("piratebox", _render_piratebox),
-)
+def _render_dashboard(
+    image: Image.Image,
+    stats: Stats,
+    logo: Optional[Image.Image],
+    fonts: Fonts,
+    layout: Layout,
+) -> None:
+    """Render everything on one page, for small screens with no buttons and no patience."""
+    draw = ImageDraw.Draw(image)
+    width, height = image.size
+    margin, gutter = layout.margin, layout.gutter
+    name = os.getenv("PIRATEBOX_NAME", "PirateBox").upper()
+    _draw_header(draw, width, name, f"UP {stats.uptime}", fonts, layout, fill=RED)
+    _draw_footer(draw, width, height, fonts, layout)
+
+    y = layout.header_h + gutter
+    text_right = width - margin
+    if logo:
+        logo_x = width - margin - logo.width
+        _paste_mono(image, logo, (logo_x, y))
+        text_right = logo_x - gutter
+    column = max(10, text_right - margin)
+    small_h = _font_height(fonts.small)
+
+    # The address is the only line anyone reads, so it gets the bold red treatment.
+    has_ip = stats.ip and stats.ip != "unknown"
+    url = f"http://{stats.ip}" if has_ip else "NO IP YET"
+    if has_ip and _text_width(fonts.bold, url) > column:
+        url = stats.ip
+    url_font = _fit_font(url, column, fonts.bold, fonts.medium, fonts.small)
+    draw.text((margin, y), url, font=url_font, fill=RED)
+    y += _font_height(url_font) + gutter
+
+    wifi = f"WIFI {stats.ssid or '-'}"
+    draw.text((margin, y), wifi, font=_fit_font(wifi, column, fonts.small, fonts.tiny), fill=BLACK)
+    y += small_h + gutter
+
+    online = "-" if stats.clients is None else str(stats.clients)
+    draw.text((margin, y), f"ONLINE {online}", font=fonts.small, fill=BLACK)
+    y += small_h + gutter
+    if logo:
+        y = max(y, layout.header_h + gutter + logo.height + gutter)
+
+    counts = f"FILES {stats.files}  CHAT {stats.chats}  POSTS {stats.posts}"
+    full_width = width - 2 * margin
+    draw.text((margin, y), counts, font=_fit_font(counts, full_width, fonts.small, fonts.tiny), fill=BLACK)
+    y += small_h + gutter
+
+    # Disk bar and temperature share a row. Red means "deal with this", not "decoration".
+    disk_percent = _percent(stats.disk_used, stats.disk_total)
+    temp_hot = stats.cpu_temp is not None and stats.cpu_temp >= 70
+    temp_text = "" if stats.cpu_temp is None else f"{stats.cpu_temp:.0f}C"
+    label = "DISK"
+    value = f"{disk_percent:.0f}%"
+    label_w = _text_width(fonts.small, label) + gutter
+    value_w = _text_width(fonts.small, value) + gutter
+    temp_w = _text_width(fonts.small, temp_text) + gutter * 2 if temp_text else 0
+    bar_x0 = margin + label_w
+    bar_x1 = max(bar_x0 + 10, width - margin - value_w - temp_w)
+    bar_y0 = y + 2
+    bar_y1 = y + small_h
+    draw.text((margin, y), label, font=fonts.small, fill=BLACK)
+    draw.rectangle((bar_x0, bar_y0, bar_x1, bar_y1), outline=BLACK, fill=WHITE)
+    fill_w = int((bar_x1 - bar_x0) * max(0.0, min(disk_percent, 100.0)) / 100.0)
+    if fill_w:
+        draw.rectangle((bar_x0, bar_y0, bar_x0 + fill_w, bar_y1), fill=RED if disk_percent >= 90 else BLACK)
+    draw.text((bar_x1 + gutter, y), value, font=fonts.small, fill=BLACK)
+    if temp_text:
+        temp_x = width - margin - _text_width(fonts.small, temp_text)
+        draw.text((temp_x, y), temp_text, font=fonts.small, fill=RED if temp_hot else BLACK)
+    y += small_h + gutter
+
+    tagline = "NO INTERNET. BY DESIGN."
+    tagline_y = max(y, height - layout.footer_h - margin - _font_height(fonts.tiny))
+    if tagline_y + _font_height(fonts.tiny) <= height - layout.footer_h:
+        _center_text(draw, width, tagline_y, tagline, fonts.tiny)
+
+
+RENDERERS: dict[str, Callable[..., None]] = {
+    "status": _render_status,
+    "network": _render_network,
+    "piratebox": _render_piratebox,
+    "dashboard": _render_dashboard,
+}
+
+
+def _parse_pages(raw: str) -> list[tuple[str, Callable[..., None]]]:
+    """Turn a comma list of page names into renderers, ignoring the imaginary ones."""
+    pages = []
+    for chunk in raw.split(","):
+        name = chunk.strip().lower()
+        if not name:
+            continue
+        if name not in RENDERERS:
+            print(f"[epaper] Unknown page '{name}', skipping. Options: {', '.join(RENDERERS)}", file=sys.stderr)
+            continue
+        pages.append((name, RENDERERS[name]))
+    if not pages:
+        return _parse_pages(DEFAULT_PAGES)
+    return pages
+
+
+def _render_page(
+    name: str,
+    renderer: Callable[..., None],
+    canvas: Image.Image,
+    stats: Stats,
+    logo: Optional[Image.Image],
+    hostname: str,
+    fonts: Fonts,
+    layout: Layout,
+) -> None:
+    """Call a renderer with the arguments it insists on."""
+    if name in ("status", "dashboard"):
+        renderer(canvas, stats, logo, fonts, layout)
+    elif name == "network":
+        renderer(canvas, stats, hostname, fonts, layout)
+    else:
+        renderer(canvas, stats, fonts, layout)
+
+
+def _canvas_size(width: int, height: int, orientation: str) -> tuple[int, int]:
+    """Pick canvas dimensions; Waveshare's getbuffer rotates whichever way we hand it."""
+    short_side, long_side = sorted((width, height))
+    if orientation == "landscape":
+        return long_side, short_side
+    if orientation == "portrait":
+        return short_side, long_side
+    return width, height
 
 
 def _collect_stats(db_path: Path, data_path: Path, prev_cpu: Optional[tuple[int, int]]) -> tuple[Stats, tuple[int, int]]:
@@ -888,7 +1225,7 @@ def _collect_stats(db_path: Path, data_path: Path, prev_cpu: Optional[tuple[int,
     disk_used, disk_total = _read_disk(data_path)
     uptime = _read_uptime()
     ip = _read_ip()
-    files, threads, posts = _read_counts(db_path)
+    files, threads, posts, chats = _read_counts(db_path)
     timestamp = time.strftime("%H:%M")
 
     return (
@@ -905,18 +1242,49 @@ def _collect_stats(db_path: Path, data_path: Path, prev_cpu: Optional[tuple[int,
             threads=threads,
             posts=posts,
             timestamp=timestamp,
+            chats=chats,
+            clients=_read_clients(os.getenv("PIRATEBOX_WIFI_IFACE", "wlan0")),
+            ssid=_read_ssid(),
         ),
         cpu_state,
     )
 
 
+def _parse_size(raw: str) -> tuple[int, int]:
+    """Parse WxH, because argparse has no type for 'a rectangle, please'."""
+    try:
+        width, height = (int(part) for part in raw.lower().split("x", 1))
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"expected WxH, got {raw!r}") from exc
+    if width <= 0 or height <= 0:
+        raise argparse.ArgumentTypeError(f"expected positive WxH, got {raw!r}")
+    return width, height
+
+
+def _exit_on_sigterm(_signum: int, _frame: object) -> None:
+    """Turn systemd's SIGTERM into a normal exit so the panel gets put to bed."""
+    raise SystemExit(0)
+
+
 def main() -> None:
     """CLI entry point that drives the e-paper refresh loop."""
     parser = argparse.ArgumentParser(description="PirateBox e-Paper status screen")
-    parser.add_argument("--interval", type=int, default=int(os.getenv("PIRATEBOX_EPD_INTERVAL", "30")))
-    parser.add_argument("--rotate", type=int, default=int(os.getenv("PIRATEBOX_EPD_ROTATE", "0")))
+    parser.add_argument("--interval", type=int, default=_read_env_int("PIRATEBOX_EPD_INTERVAL", 30))
+    parser.add_argument("--rotate", type=int, default=_read_env_int("PIRATEBOX_EPD_ROTATE", 0))
     parser.add_argument("--logo", type=str, default=os.getenv("PIRATEBOX_EPD_LOGO", str(DEFAULT_LOGO)))
     parser.add_argument("--buttons", type=str, default=os.getenv("PIRATEBOX_EPD_BUTTON_PINS", DEFAULT_BUTTON_PINS))
+    parser.add_argument(
+        "--pages",
+        type=str,
+        default=os.getenv("PIRATEBOX_EPD_PAGES", DEFAULT_PAGES),
+        help=f"Comma-separated pages to show: {', '.join(RENDERERS)}",
+    )
+    parser.add_argument(
+        "--orientation",
+        choices=("auto", "portrait", "landscape"),
+        default=os.getenv("PIRATEBOX_EPD_ORIENTATION", "auto").strip().lower() or "auto",
+        help="Canvas orientation (auto uses the driver's native one)",
+    )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     parser.add_argument(
         "--driver",
@@ -924,84 +1292,137 @@ def main() -> None:
         default=os.getenv("PIRATEBOX_EPD_DRIVER", "auto"),
         help="EPD driver to use: auto, rpi_epd2in7, waveshare_epd",
     )
+    parser.add_argument(
+        "--preview",
+        type=str,
+        default="",
+        help="Render each page to PNG in this directory and exit. No hardware, no excuses.",
+    )
+    parser.add_argument(
+        "--preview-size",
+        type=_parse_size,
+        default=_parse_size("250x122"),
+        help="Canvas size for --preview, as WxH (default: 250x122)",
+    )
     args = parser.parse_args()
 
-    try:
-        full_refresh_every = int(os.getenv("PIRATEBOX_EPD_FULL_REFRESH_EVERY", "10"))
-    except ValueError:
-        full_refresh_every = 10
-    if full_refresh_every < 0:
-        full_refresh_every = 0
-
+    full_refresh_every = max(0, _read_env_int("PIRATEBOX_EPD_FULL_REFRESH_EVERY", 10))
+    max_age = max(0, _read_env_int("PIRATEBOX_EPD_MAX_AGE", 3600))
     refresh_policy = _parse_refresh_policy()
+    pages = _parse_pages(args.pages)
+    page_names = [name for name, _ in pages]
+
+    db_path = Path(os.getenv("PIRATEBOX_DB_PATH", ROOT_DIR / "data" / "piratebox.db"))
+    data_path = Path(os.getenv("PIRATEBOX_DATA_DIR", ROOT_DIR / "data"))
+    hostname = socket.gethostname()
+
+    if args.preview:
+        width, height = args.preview_size
+        fonts = _load_fonts(width, height)
+        layout = _make_layout(fonts, width, height)
+        logo = _load_logo(Path(args.logo), _logo_box(width, height))
+        stats, _ = _collect_stats(db_path, data_path, None)
+        out_dir = Path(args.preview)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        for name, renderer in pages:
+            canvas = _prepare_canvas(width, height)
+            _render_page(name, renderer, canvas, stats, logo, hostname, fonts, layout)
+            target = out_dir / f"{name}.png"
+            canvas.convert("RGB").save(target)
+            print(f"Wrote {target}")
+        return
 
     _debug(
         args.debug,
         "Starting epaper: interval="
         f"{args.interval}s rotate={args.rotate} driver={args.driver} buttons={args.buttons or 'none'} "
-        f"full_refresh_every={full_refresh_every} refresh_on_change={int(refresh_policy.on_change)}",
+        f"pages={','.join(page_names)} full_refresh_every={full_refresh_every} "
+        f"refresh_on_change={int(refresh_policy.on_change)} max_age={max_age}s",
     )
+    signal.signal(signal.SIGTERM, _exit_on_sigterm)
     driver = _load_driver(args.driver, debug=args.debug)
+    min_refresh = max(0, _read_env_int("PIRATEBOX_EPD_MIN_REFRESH", driver.min_refresh))
     driver.clear()
 
-    fonts = _load_fonts(driver.width, driver.height)
-    layout = _make_layout(fonts, driver.width, driver.height)
-
+    canvas_w, canvas_h = _canvas_size(driver.width, driver.height, args.orientation)
+    wake = threading.Event()
     state = State(force_refresh=True)
-    handler = ButtonHandler(state=state, total_pages=len(PAGES), driver=driver)
+    handler = ButtonHandler(state=state, total_pages=len(pages), wake=wake)
     # Buttons: four chances to do something useful, or at least entertaining.
-    buttons = ButtonWatcher(_parse_buttons(args.buttons), handler)
+    button_config = _parse_buttons(args.buttons)
+    buttons = ButtonWatcher(button_config, handler)
+    hints = _footer_hints(page_names, len(button_config.pins)) if buttons.active else ()
+    # Without buttons, nobody can flip pages, so the pages flip themselves.
+    cycle_pages = not buttons.active and len(pages) > 1
 
-    logo = _load_logo(Path(args.logo), (64, 64))
+    fonts = _load_fonts(canvas_w, canvas_h)
+    layout = _make_layout(fonts, canvas_w, canvas_h, hints)
+
+    logo = _load_logo(Path(args.logo), _logo_box(canvas_w, canvas_h))
     _debug(args.debug, f"Logo: {args.logo} ({'loaded' if logo else 'missing'})")
-
-    db_path = Path(os.getenv("PIRATEBOX_DB_PATH", ROOT_DIR / "data" / "piratebox.db"))
-    data_path = Path(os.getenv("PIRATEBOX_DATA_DIR", ROOT_DIR / "data"))
+    _debug(args.debug, f"Canvas: {canvas_w}x{canvas_h} color={driver.color} min_refresh={min_refresh}s")
     _debug(args.debug, f"DB path: {db_path}")
     _debug(args.debug, f"Data path: {data_path}")
 
     prev_cpu: Optional[tuple[int, int]] = None
-    hostname = socket.gethostname()
-    loop_count = 0
+    draw_count = 0
     last_drawn: Optional[Stats] = None
+    last_page: Optional[int] = None
+    last_draw_at: Optional[float] = None
 
     try:
         # Main loop: keep the paper fresh so it does not look like last week's news.
         while True:
-            buttons.poll()
+            if state.sleep_requested:
+                state.sleep_requested = False
+                if state.sleeping:
+                    driver.init()
+                    state.sleeping = False
+                    state.force_refresh = True
+                else:
+                    driver.sleep()
+                    state.sleeping = True
             if state.sleeping:
-                time.sleep(args.interval)
+                _wait(buttons, wake, args.interval)
                 continue
 
             stats, prev_cpu = _collect_stats(db_path, data_path, prev_cpu)
-            page_name, renderer = PAGES[state.page]
-            _debug(args.debug, f"Render page={page_name} force={state.force_refresh} sleeping={state.sleeping}")
+            page_name, renderer = pages[state.page]
+            forced = state.force_refresh
+            age = None if last_draw_at is None else time.monotonic() - last_draw_at
+            _debug(args.debug, f"Render page={page_name} force={forced} sleeping={state.sleeping}")
 
-            if not state.force_refresh and refresh_policy.on_change:
-                if not _stats_changed(last_drawn, stats, refresh_policy):
-                    _debug(args.debug, "No significant change; skipping refresh")
-                    time.sleep(args.interval)
-                    continue
-
-            canvas = _prepare_canvas(driver.width, driver.height)
-            if page_name == "status":
-                renderer(canvas, stats, logo, fonts, layout)
-            elif page_name == "network":
-                renderer(canvas, stats, hostname, fonts, layout)
+            changed = (
+                forced
+                or state.page != last_page
+                or not refresh_policy.on_change
+                or _stats_changed(last_drawn, stats, refresh_policy)
+            )
+            stale = max_age > 0 and age is not None and age >= max_age
+            if not (changed or stale):
+                _debug(args.debug, "No significant change; skipping refresh")
+            elif not forced and age is not None and age < min_refresh:
+                _debug(args.debug, f"Panel needs {min_refresh - age:.0f}s more rest; deferring refresh")
             else:
-                renderer(canvas, stats, fonts, layout)
+                canvas = _prepare_canvas(canvas_w, canvas_h)
+                _render_page(page_name, renderer, canvas, stats, logo, hostname, fonts, layout)
 
-            if args.rotate:
-                canvas = canvas.rotate(args.rotate, expand=True)
+                if args.rotate:
+                    canvas = canvas.rotate(args.rotate, expand=True)
 
-            full_refresh = state.force_refresh
-            if full_refresh_every:
-                full_refresh = full_refresh or loop_count % full_refresh_every == 0
-            driver.draw(canvas, full_refresh)
-            state.force_refresh = False
-            last_drawn = stats
-            loop_count += 1
-            time.sleep(args.interval)
+                full_refresh = forced
+                if full_refresh_every:
+                    full_refresh = full_refresh or draw_count % full_refresh_every == 0
+                black, red = _split_layers(canvas, driver.color)
+                driver.draw(black, red, full_refresh)
+                state.force_refresh = False
+                last_drawn = stats
+                last_page = state.page
+                last_draw_at = time.monotonic()
+                draw_count += 1
+                if cycle_pages:
+                    state.page = (state.page + 1) % len(pages)
+            _wait(buttons, wake, args.interval)
     except KeyboardInterrupt:
         pass
     finally:

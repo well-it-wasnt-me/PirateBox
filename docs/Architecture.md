@@ -32,7 +32,13 @@ The app answers common OS connectivity checks and redirects them to `/captive`. 
 
 ## Optional e-Paper status
 
-The `scripts/epaper_hat.py` script reads system stats and PirateBox counts, then renders them to a 2.7" e-Paper HAT. It tries multiple driver libraries because hardware vendors are not required to coordinate their choices.
+The `scripts/epaper_hat.py` script reads system stats and PirateBox counts, then renders them to a 2.7" e-Paper HAT or a 2.13" tri-color one. It tries multiple driver libraries because hardware vendors are not required to coordinate their choices.
+
+Pages draw on a paletted canvas (black, white, red) that gets split into one or two 1-bit layers at the end, so the same renderers serve mono and tri-color panels. Button callbacks only flip flags; the main loop owns the SPI bus.
+
+## Pi Zero W edition
+
+`scripts/zero/` holds a dedicated installer, an image builder, and a first-boot unit for the Pi Zero W. The installer pulls everything from apt (no pip, no compilers), and the image builder runs that same installer inside the image under qemu, so the resulting card boots offline. See [Pi Zero W Edition](Pi-Zero-W.md).
 
 ## What not to expect
 

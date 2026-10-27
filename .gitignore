@@ -6,3 +6,6 @@ __pycache__/
 /data/
 .env
 .idea/
+/dist/
+/site/
+/vendor/

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import os
+import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -24,6 +26,12 @@ except ImportError:  # pragma: no cover - fallback for `python app/main.py`
     import db
 
 APP_NAME = os.getenv("PIRATEBOX_NAME", "PirateBox")
+APP_DIR = Path(__file__).resolve().parent
+CAPTIVE_ACK_TTL = 60 * 60 * 24 * 7
+
+# Client IPs that already clicked through the portal. OS connectivity probes do not
+# carry the browser's cookies, so the cookie alone never convinced a phone of anything.
+_captive_acked_clients: dict[str, float] = {}
 
 
 @asynccontextmanager
@@ -35,9 +43,9 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title=APP_NAME, lifespan=lifespan)
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 
-templates = Jinja2Templates(directory="app/templates")
+templates = Jinja2Templates(directory=APP_DIR / "templates")
 
 
 def _format_size(num_bytes: int) -> str:
@@ -60,14 +68,39 @@ def _safe_next(raw: Optional[str]) -> str:
     """Keep redirects on a short leash so nobody gets cute."""
     if not raw:
         return "/"
+    # Browsers read "/\\evil" as "//evil", and control characters get stripped before
+    # parsing, so both are just open redirects wearing a fake mustache.
+    if "\\" in raw or any(ord(char) < 0x20 or ord(char) == 0x7F for char in raw):
+        return "/"
     if raw.startswith("/") and not raw.startswith("//"):
         return raw
     return "/"
 
 
+def _client_ip(request: Request) -> Optional[str]:
+    """Return the client IP, or None when the transport keeps it a secret."""
+    return request.client.host if request.client else None
+
+
+def _remember_captive_ack(request: Request) -> None:
+    """Remember a client IP so its OS probes stop getting bounced to the portal."""
+    client_ip = _client_ip(request)
+    if client_ip:
+        _captive_acked_clients[client_ip] = time.monotonic() + CAPTIVE_ACK_TTL
+
+
 def _captive_acknowledged(request: Request) -> bool:
     """Check whether the captive portal has been waved away already."""
-    return request.cookies.get("piratebox_captive_ack") == "1"
+    if request.cookies.get("piratebox_captive_ack") == "1":
+        return True
+    client_ip = _client_ip(request)
+    expires_at = _captive_acked_clients.get(client_ip) if client_ip else None
+    if expires_at is None:
+        return False
+    if expires_at < time.monotonic():
+        _captive_acked_clients.pop(client_ip, None)
+        return False
+    return True
 
 
 templates.env.filters["filesize"] = _format_size
@@ -112,7 +145,8 @@ def captive_ack(request: Request, next: Optional[str] = None) -> HTMLResponse:
             "next_url": next_url,
         },
     )
-    response.set_cookie("piratebox_captive_ack", "1", max_age=60 * 60 * 24 * 7, samesite="lax")
+    response.set_cookie("piratebox_captive_ack", "1", max_age=CAPTIVE_ACK_TTL, samesite="lax")
+    _remember_captive_ack(request)
     return response
 
 
@@ -170,7 +204,7 @@ def download_file(file_id: int) -> FileResponse:
 @app.get("/chat", response_class=HTMLResponse)
 def chat_page(request: Request) -> HTMLResponse:
     """Render the chat UI with the latest messages and no pretense."""
-    messages = db.list_chat_messages(after_id=0, limit=50)
+    messages = db.list_recent_chat_messages(limit=50)
     last_id = messages[-1].id if messages else 0
     return templates.TemplateResponse(
         request,
@@ -293,12 +327,15 @@ CAPTIVE_PORTAL_PATHS = {
     "/redirect",
 }
 
+APPLE_SUCCESS_PAGE = "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>"
+
 def _captive_success_response(path: str) -> Response:
     """Return OS-specific connectivity success responses to shut the portal up."""
     if path in {"/generate_204", "/gen_204"}:
         return Response(status_code=204)
     if path == "/hotspot-detect.html":
-        return HTMLResponse("<html><body>Success</body></html>")
+        # Apple wants this exact page. Close enough is how the portal sheet never closes.
+        return HTMLResponse(APPLE_SUCCESS_PAGE)
     if path in {"/library/test/success.html", "/success.html", "/success.txt"}:
         return PlainTextResponse("Success")
     if path == "/ncsi.txt":
