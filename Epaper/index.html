@@ -57,6 +57,10 @@
                 </li>
               </ul>
               <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Pi-Zero-W/">Pi Zero W Edition</a>
+                </li>
+              </ul>
+              <ul>
                 <li class="toctree-l1"><a class="reference internal" href="../Architecture/">Architecture</a>
                 </li>
               </ul>
@@ -82,6 +86,10 @@
     <li class="toctree-l2"><a class="reference internal" href="#run">Run</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#refresh-behavior">Refresh behavior</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#pages-and-orientation">Pages and orientation</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#preview-without-hardware">Preview without hardware</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#buttons-optional">Buttons (optional)</a>
     </li>
@@ -134,6 +142,8 @@
               
                 <h1 id="e-paper-hat">E-Paper HAT<a class="headerlink" href="#e-paper-hat" title="Permanent link">&para;</a></h1>
 <p>PirateBox can drive a 2.7 inch e-Paper HAT (264x176, Rev 2.1) to show the PirateBox logo plus local stats (CPU, temp, disk, IP, counts). It also supports four hardware buttons if you wire them and configure GPIO pins.</p>
+<p>It also drives the Waveshare 2.13 inch e-Paper HAT (B) V4 (250x122, black/white/red, no buttons) used by the
+<a href="../Pi-Zero-W/">Pi Zero W Edition</a>, which sets all of this up for you. Red is used for things that deserve attention.</p>
 <h2 id="hardware-notes">Hardware notes<a class="headerlink" href="#hardware-notes" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Enable SPI on the Pi (<code>raspi-config</code> -&gt; Interface Options -&gt; SPI).</li>
@@ -166,6 +176,9 @@ On Raspberry Pi 5, <code>RPi.GPIO</code> often fails; install <code>python3-rpi-
 Driver preference can be forced with <code>--driver waveshare_epd</code> or <code>PIRATEBOX_EPD_DRIVER=waveshare_epd</code>.
 If the Waveshare library is installed, the script tries <code>epd2in7</code> first, then <code>epd2in7_V2</code>.
 Override with <code>PIRATEBOX_EPD_WAVESHARE_MODULE=epd2in7_V2</code> (or <code>epd2in7</code>) if your panel needs it.
+For the 2.13 inch (B) V4 use <code>PIRATEBOX_EPD_WAVESHARE_MODULE=epd2in13b_V4</code>. Panels cannot be auto-detected:
+initializing the wrong driver just waits on a busy pin forever, which looks a lot like a blank screen.
+Tri-color modules are detected by their two-layer <code>display()</code> and drawn in black and red.
 You can also set <code>PIRATEBOX_EPD_FONT=/path/to/font.ttf</code> to use a specific TTF font.</p>
 <h2 id="refresh-behavior">Refresh behavior<a class="headerlink" href="#refresh-behavior" title="Permanent link">&para;</a></h2>
 <p>For smoother updates, the script uses partial refresh when the driver supports it and triggers
@@ -179,7 +192,26 @@ PIRATEBOX_EPD_REFRESH_MEM_DELTA=2
 PIRATEBOX_EPD_REFRESH_DISK_DELTA=1
 PIRATEBOX_EPD_REFRESH_COUNT_DELTA=1
 PIRATEBOX_EPD_REFRESH_IP=1</code></pre>
-<p>When enabled, the display only refreshes if those deltas are exceeded or a button forces it.</p>
+<p>When enabled, the display only refreshes if those deltas are exceeded or a button forces it.
+A delta of <code>0</code> refreshes on any change; a negative delta ignores that metric completely.</p>
+<p>Two more timers keep things honest:</p>
+<pre class="highlight"><code class="language-bash">PIRATEBOX_EPD_MAX_AGE=3600     # redraw at least this often (seconds), even if nothing changed; 0 disables
+PIRATEBOX_EPD_MIN_REFRESH=180  # never redraw more often than this (seconds); defaults to 180 on tri-color panels</code></pre>
+<p>Tri-color panels have no partial refresh, take about 15 seconds per frame, and are put into deep sleep after
+every refresh, as Waveshare recommends. Button presses still refresh immediately.</p>
+<h2 id="pages-and-orientation">Pages and orientation<a class="headerlink" href="#pages-and-orientation" title="Permanent link">&para;</a></h2>
+<p>Pick which pages to show, in order:</p>
+<pre class="highlight"><code class="language-bash">PIRATEBOX_EPD_PAGES=status,network,piratebox   # default
+PIRATEBOX_EPD_PAGES=dashboard                  # everything on one page, made for small screens</code></pre>
+<p>With buttons, K1-K3 jump to the first three pages and K4 sleeps the display; the footer labels follow the
+configured pages. Without buttons, the footer disappears and multiple pages rotate on every refresh.</p>
+<p><code>PIRATEBOX_EPD_ORIENTATION</code> can be <code>auto</code> (the driver's native orientation), <code>portrait</code> or <code>landscape</code>.
+<code>PIRATEBOX_EPD_ROTATE</code> still rotates the final image if the panel is mounted upside down.</p>
+<h2 id="preview-without-hardware">Preview without hardware<a class="headerlink" href="#preview-without-hardware" title="Permanent link">&para;</a></h2>
+<p>Render the pages to PNG files on any machine with Pillow:</p>
+<pre class="highlight"><code class="language-bash">python3 scripts/epaper_hat.py --preview /tmp/epd --preview-size 250x122 --pages dashboard,status
+python3 scripts/epaper_hat.py --preview /tmp/epd --preview-size 176x264</code></pre>
+<p>Red shows up as red in the PNGs. Mono panels print it as black and nobody is the wiser.</p>
 <h2 id="buttons-optional">Buttons (optional)<a class="headerlink" href="#buttons-optional" title="Permanent link">&para;</a></h2>
 <p>Buttons default to the Waveshare HAT pins (BCM 5,6,13,19). Override or disable as needed.</p>
 <p>Set button GPIO pins (BCM numbering):</p>
@@ -199,7 +231,9 @@ PIRATEBOX_EPD_REFRESH_IP=1</code></pre>
 </ol>
 <pre class="highlight"><code class="language-bash">sudo cp ./scripts/piratebox-epaper.service /etc/systemd/system/piratebox-epaper.service
 sudo nano /etc/systemd/system/piratebox-epaper.service</code></pre>
-<p>The unit expects a venv at <code>/opt/piratebox/.venv</code> by default. Adjust <code>ExecStart=</code> if you live elsewhere.</p>
+<p>The unit expects a venv at <code>/opt/piratebox/.venv</code> by default. Adjust <code>ExecStart=</code> if you live elsewhere.
+It reads <code>/etc/default/piratebox</code> before <code>/etc/default/piratebox-epaper</code>, so the display counts the same
+database the web app writes to.</p>
 <ol>
 <li>(Optional) Create an environment file for overrides:</li>
 </ol>
@@ -233,8 +267,10 @@ journalctl -u piratebox-epaper.service -f</code></pre>
 <li>CPU temp: <code>/sys/class/thermal/thermal_zone0/temp</code></li>
 <li>CPU usage: <code>/proc/stat</code></li>
 <li>Memory: <code>/proc/meminfo</code></li>
-<li>Disk: filesystem stats on <code>PIRATEBOX_DATA_DIR</code></li>
+<li>Disk: filesystem stats on <code>PIRATEBOX_DATA_DIR</code> (or its closest existing parent)</li>
 <li>PirateBox counts: SQLite at <code>PIRATEBOX_DB_PATH</code></li>
+<li>SSID: <code>/etc/hostapd/hostapd.conf</code></li>
+<li>Connected clients: <code>iw dev $PIRATEBOX_WIFI_IFACE station dump</code></li>
 </ul>
               
             </div>

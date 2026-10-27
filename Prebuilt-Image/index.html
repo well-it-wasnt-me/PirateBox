@@ -75,6 +75,10 @@
                 </li>
               </ul>
               <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Pi-Zero-W/">Pi Zero W Edition</a>
+                </li>
+              </ul>
+              <ul>
                 <li class="toctree-l1"><a class="reference internal" href="../Architecture/">Architecture</a>
                 </li>
               </ul>
@@ -171,8 +175,10 @@
 <p>Edit these files in the image if you want different defaults:</p>
 <ul>
 <li><code>/etc/default/piratebox</code></li>
-<li><code>/etc/default/piratebox-epaper</code></li>
+<li><code>/etc/default/piratebox-epaper</code> (set <code>PIRATEBOX_EPD_ENABLE=1</code> to install the e-paper driver on first boot)</li>
 </ul>
+<p>The first boot does not configure the access point. Run <code>sudo /opt/piratebox/scripts/pi-setup.sh --country XX</code>
+once it is up. Want an image that does everything offline? See the <a href="../Pi-Zero-W/">Pi Zero W Edition</a>.</p>
 <h2 id="re-run-first-boot">Re-run first boot<a class="headerlink" href="#re-run-first-boot" title="Permanent link">&para;</a></h2>
 <p>If you need to rerun provisioning:</p>
 <pre class="highlight"><code class="language-bash">sudo rm -f /var/lib/piratebox/.firstboot_done
@@ -182,7 +188,7 @@ sudo systemctl start piratebox-firstboot.service</code></pre>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
         <a href="../Install-Raspberry-Pi/" class="btn btn-neutral float-left" title="Install on Raspberry Pi"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../Architecture/" class="btn btn-neutral float-right" title="Architecture">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../Pi-Zero-W/" class="btn btn-neutral float-right" title="Pi Zero W Edition">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -212,7 +218,7 @@ sudo systemctl start piratebox-firstboot.service</code></pre>
       <span><a href="../Install-Raspberry-Pi/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
-      <span><a href="../Architecture/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="../Pi-Zero-W/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>

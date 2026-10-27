@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Pi Zero W Edition - PirateBox</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../stylesheets/extra.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Pi Zero W Edition";
+        var mkdocs_page_input_path = "Pi-Zero-W.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> PirateBox
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Overview/">Overview</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Install-Raspberry-Pi/">Install on Raspberry Pi</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Prebuilt-Image/">Prebuilt Image</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Pi Zero W Edition</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#what-you-need">What you need</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#option-a-prebuilt-image-no-internet-needed-ever">Option A: prebuilt image (no internet needed, ever)</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#option-b-installer-on-an-existing-raspberry-pi-os">Option B: installer on an existing Raspberry Pi OS</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#build-the-image-yourself">Build the image yourself</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#the-e-paper-dashboard">The e-paper dashboard</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#where-things-live">Where things live</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#troubleshooting">Troubleshooting</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#no-piratebox-wi-fi">No PirateBox Wi-Fi</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#the-e-paper-stays-blank">The e-paper stays blank</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#the-dashboard-is-upside-down">The dashboard is upside down</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#everything-is-slow">Everything is slow</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Architecture/">Architecture</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Configuration/">Configuration</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Operations/">Operations</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Troubleshooting/">Troubleshooting</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Epaper/">E-Paper HAT</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Development/">Development</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../FAQ/">FAQ</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">PirateBox</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Pi Zero W Edition</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/well-it-wasnt-me/PirateBox/edit/master/docs/Pi-Zero-W.md">Edit on PirateBox v2</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="pi-zero-w-edition">Pi Zero W Edition<a class="headerlink" href="#pi-zero-w-edition" title="Permanent link">&para;</a></h1>
+<p>The original PirateBox ran on a pocket router. This edition runs on a Raspberry Pi Zero W with a
+Waveshare 2.13 inch e-Paper HAT (B) V4: one CPU core, 512 MB of RAM, one Wi-Fi radio, a screen that
+can print in red, and not a single button. It is the smallest PirateBox that still has opinions.</p>
+<h2 id="what-you-need">What you need<a class="headerlink" href="#what-you-need" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Raspberry Pi Zero W. Yes, the old one. A Zero 2 W runs the same 32-bit image; it is just less impressed.</li>
+<li>microSD card, 8 GB minimum. 16 GB if people are going to share actual files.</li>
+<li>Waveshare 2.13 inch e-Paper HAT (B) <strong>V4</strong>: 250x122, black/white/red, SPI, no keys.
+  The black/white-only "2.13 inch V4" is a different panel with a different driver.</li>
+<li>A micro-USB power supply that delivers what it promises.</li>
+</ul>
+<p>The Zero W is ARMv6, so it only boots the <strong>32-bit</strong> Raspberry Pi OS. The 64-bit image will not even
+say hello.</p>
+<h2 id="option-a-prebuilt-image-no-internet-needed-ever">Option A: prebuilt image (no internet needed, ever)<a class="headerlink" href="#option-a-prebuilt-image-no-internet-needed-ever" title="Permanent link">&para;</a></h2>
+<p>The image already contains every package, so the first boot works fully offline. That matters: the
+Zero W has one radio, and it cannot be online and an access point at the same time.</p>
+<ol>
+<li>Grab <code>piratebox-zero-w-raspios-lite-armhf.img.xz</code> from the GitHub release, or build it (below).</li>
+<li>Flash it with Raspberry Pi Imager: <strong>Choose OS -&gt; Use custom</strong>.</li>
+<li>In <strong>OS customisation</strong>, set a username and password and enable SSH.
+   Skip the Wi-Fi settings; the radio is about to become the access point anyway.</li>
+<li>Before ejecting the card, open the boot partition (it is FAT, any computer can read it) and edit
+   <code>piratebox.txt</code>:</li>
+</ol>
+<pre class="highlight"><code class="language-ini">SSID=PirateBox
+COUNTRY=IT
+EPD_ROTATE=0
+EPD_ENABLE=1</code></pre>
+<ol>
+<li>Put the card in the Zero, attach the HAT, power it up, and wait. The first boot resizes the card,
+   reboots, then brings up the access point. On a Zero that takes a few minutes. Make tea.</li>
+<li>Join the <code>PirateBox</code> Wi-Fi and open <code>http://10.0.0.1/</code>. The e-paper shows the same address in red,
+   for people who do not read documentation.</li>
+</ol>
+<h2 id="option-b-installer-on-an-existing-raspberry-pi-os">Option B: installer on an existing Raspberry Pi OS<a class="headerlink" href="#option-b-installer-on-an-existing-raspberry-pi-os" title="Permanent link">&para;</a></h2>
+<p>Use this if you already have a Zero running Raspberry Pi OS Lite (32-bit, trixie).
+The installer needs internet once, to download packages.</p>
+<ol>
+<li>Flash Raspberry Pi OS Lite (32-bit). In Imager's OS customisation, configure Wi-Fi <strong>and</strong> SSH;
+   the installer downloads over that Wi-Fi.</li>
+<li>SSH in and run:</li>
+</ol>
+<pre class="highlight"><code class="language-bash">sudo apt install -y git
+git clone https://github.com/well-it-wasnt-me/PirateBox.git
+cd PirateBox
+sudo ./scripts/zero/install-zero.sh --ssid PirateBox --country IT</code></pre>
+<ol>
+<li>The installer does everything while you are still online, then reboots. On the way back up,
+   <code>wlan0</code> stops being a Wi-Fi client and becomes the access point, so your SSH session ends.
+   That is not a crash, that is the plan.</li>
+<li>Join the <code>PirateBox</code> Wi-Fi and SSH back in with <code>ssh &lt;user&gt;@10.0.0.1</code>.</li>
+</ol>
+<p>Installer options:</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--ssid &lt;name&gt;</code></td>
+<td>SSID to broadcast (default <code>PirateBox</code>)</td>
+</tr>
+<tr>
+<td><code>--country &lt;CC&gt;</code></td>
+<td>Wi-Fi country code, e.g. <code>IT</code> or <code>US</code>. Set it; unset radios sulk.</td>
+</tr>
+<tr>
+<td><code>--rotate &lt;deg&gt;</code></td>
+<td>E-paper rotation: <code>0</code>, <code>90</code>, <code>180</code>, <code>270</code></td>
+</tr>
+<tr>
+<td><code>--no-epaper</code></td>
+<td>Skip the display entirely</td>
+</tr>
+<tr>
+<td><code>--no-reboot</code></td>
+<td>Do not reboot; the access point starts on the next boot instead</td>
+</tr>
+</tbody>
+</table>
+<p>Everything comes from apt. Raspberry Pi OS ships FastAPI, Pillow and friends prebuilt for ARMv6, while
+pip would happily spend an afternoon compiling Rust on a single core. Nothing is pip-installed.</p>
+<h2 id="build-the-image-yourself">Build the image yourself<a class="headerlink" href="#build-the-image-yourself" title="Permanent link">&para;</a></h2>
+<p>You need a Linux machine (x86_64 is fine), <code>sudo</code>, about 6 GB of free space, and qemu user emulation
+(<code>qemu-user-static</code> + <code>binfmt-support</code> on Debian/Ubuntu, <code>qemu-user-static</code> + <code>qemu-user-static-binfmt</code>
+on Arch).</p>
+<pre class="highlight"><code class="language-bash">./scripts/zero/build-zero-image.sh</code></pre>
+<p>The script downloads the official 32-bit Raspberry Pi OS Lite image, grows it a little, copies the repo
+to <code>/opt/piratebox</code>, runs <code>scripts/zero/install-zero.sh</code> inside the image under qemu, and compresses the
+result to <code>dist/piratebox-zero-w-raspios-lite-armhf.img.xz</code>. qemu pretending to be a Zero is slow;
+expect a coffee, not an espresso.</p>
+<p>Build knobs:</p>
+<ul>
+<li><code>PIRATEBOX_ZERO_IMAGE_URL</code> to use a different base image.</li>
+<li><code>PIRATEBOX_ZERO_IMAGE_GROW_MB</code> to add more than 1024 MB of headroom.</li>
+<li><code>PIRATEBOX_SSID</code>, <code>PIRATEBOX_COUNTRY_CODE</code>, <code>PIRATEBOX_EPD_ROTATE</code> to bake defaults into <code>piratebox.txt</code>.</li>
+<li><code>PIRATEBOX_WAVESHARE_REF</code> to fetch the Waveshare driver from a different commit.</li>
+<li><code>PIRATEBOX_IMAGE_OUTDIR</code>, <code>PIRATEBOX_IMAGE_WORKDIR</code>, <code>PIRATEBOX_IMAGE_KEEP_WORKDIR=1</code> work as in
+  <a href="../Prebuilt-Image/">Prebuilt Image</a>.</li>
+</ul>
+<p>CI builds this image next to the regular one on every release.</p>
+<h2 id="the-e-paper-dashboard">The e-paper dashboard<a class="headerlink" href="#the-e-paper-dashboard" title="Permanent link">&para;</a></h2>
+<p>No buttons means no pages to flip, so the Zero gets a single landscape dashboard:</p>
+<ul>
+<li>a red header with the box name and uptime,</li>
+<li>the URL in bold red, because it is the only line anyone reads,</li>
+<li>the SSID and how many devices are connected,</li>
+<li>file, chat and forum post counts,</li>
+<li>a disk bar (red past 90%) and the CPU temperature (red past 70 C).</li>
+</ul>
+<p>Tri-color panels are slow and fussy. A refresh takes about 15 seconds of dramatic flashing, Waveshare
+says no more than one every 180 seconds, and the panel should sleep between refreshes. So the display:</p>
+<ul>
+<li>samples stats every minute, but refreshes at most every 3 minutes,</li>
+<li>refreshes only when counts, clients, the IP or disk usage change, or the temperature moves 5 C,</li>
+<li>refreshes at least once an hour anyway, so the uptime is not fiction,</li>
+<li>puts the panel into deep sleep after every frame.</li>
+</ul>
+<p>If you list several pages in <code>PIRATEBOX_EPD_PAGES</code>, they rotate on each refresh, since nobody can press
+a button that does not exist.</p>
+<p>Preview it without any hardware:</p>
+<pre class="highlight"><code class="language-bash">python3 scripts/epaper_hat.py --preview /tmp/epd --preview-size 250x122 --pages dashboard</code></pre>
+<p>Settings live in <code>/etc/default/piratebox-epaper</code>. See <a href="../Epaper/">E-Paper HAT</a> for every knob.</p>
+<h2 id="where-things-live">Where things live<a class="headerlink" href="#where-things-live" title="Permanent link">&para;</a></h2>
+<ul>
+<li>App: <code>/opt/piratebox</code> (venv at <code>/opt/piratebox/.venv</code>, using the system packages)</li>
+<li>Waveshare driver: <code>/opt/piratebox/vendor/waveshare_epd</code></li>
+<li>Data: <code>/var/lib/piratebox/data</code></li>
+<li>Upload spool: <code>/var/lib/piratebox/tmp</code> (because <code>/tmp</code> is RAM, and RAM is the one thing we lack)</li>
+<li>Settings: <code>/etc/default/piratebox</code>, <code>/etc/default/piratebox-epaper</code></li>
+<li>First-boot settings: <code>/boot/firmware/piratebox.txt</code></li>
+<li>First-boot log: <code>/var/log/piratebox-zero-firstboot.log</code></li>
+</ul>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="no-piratebox-wi-fi">No PirateBox Wi-Fi<a class="headerlink" href="#no-piratebox-wi-fi" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Check the first-boot log: <code>cat /var/log/piratebox-zero-firstboot.log</code>.</li>
+<li>Check hostapd: <code>journalctl -u hostapd -b</code>.</li>
+<li><code>rfkill list</code> should show the Wi-Fi as unblocked. Setting <code>COUNTRY</code> usually fixes that.</li>
+<li>Re-run first boot after editing <code>piratebox.txt</code>:</li>
+</ul>
+<pre class="highlight"><code class="language-bash">sudo rm -f /var/lib/piratebox/.zero_firstboot_done
+sudo systemctl start piratebox-zero-firstboot.service</code></pre>
+<h3 id="the-e-paper-stays-blank">The e-paper stays blank<a class="headerlink" href="#the-e-paper-stays-blank" title="Permanent link">&para;</a></h3>
+<ul>
+<li>SPI must be on: <code>ls /dev/spidev0.0</code>. If it is missing, check <code>dtparam=spi=on</code> in <code>/boot/firmware/config.txt</code> and reboot.</li>
+<li>Run it by hand and read what it says:</li>
+</ul>
+<pre class="highlight"><code class="language-bash">sudo systemctl stop piratebox-epaper
+sudo /opt/piratebox/.venv/bin/python /opt/piratebox/scripts/epaper_hat.py --debug</code></pre>
+<ul>
+<li>Make sure the panel really is the (B) V4. Older (B) revisions use different drivers and will sit there
+  looking blank and innocent.</li>
+</ul>
+<h3 id="the-dashboard-is-upside-down">The dashboard is upside down<a class="headerlink" href="#the-dashboard-is-upside-down" title="Permanent link">&para;</a></h3>
+<p>Set <code>PIRATEBOX_EPD_ROTATE=180</code> in <code>/etc/default/piratebox-epaper</code>, then
+<code>sudo systemctl restart piratebox-epaper</code>. Wait for the refresh. Patiently.</p>
+<h3 id="everything-is-slow">Everything is slow<a class="headerlink" href="#everything-is-slow" title="Permanent link">&para;</a></h3>
+<p>It is a Zero. One core at 1 GHz serving a web app, a database, an access point and a display is already
+a small miracle. Keep uploads modest (the default cap is 256 MB) and expect a classroom, not a stadium.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../Prebuilt-Image/" class="btn btn-neutral float-left" title="Prebuilt Image"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../Architecture/" class="btn btn-neutral float-right" title="Architecture">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/well-it-wasnt-me/PirateBox" class="fa fa-code-fork" style="color: #fcfcfc"> PirateBox v2</a>
+        </span>
+    
+    
+      <span><a href="../Prebuilt-Image/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../Architecture/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

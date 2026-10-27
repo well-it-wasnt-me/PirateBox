@@ -97,6 +97,10 @@
                 </li>
               </ul>
               <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Pi-Zero-W/">Pi Zero W Edition</a>
+                </li>
+              </ul>
+              <ul>
                 <li class="toctree-l1"><a class="reference internal" href="../Architecture/">Architecture</a>
                 </li>
               </ul>
@@ -161,7 +165,12 @@
 <pre class="highlight"><code class="language-bash">sudo ./scripts/pi-setup.sh --iface wlan0</code></pre>
 <p>To run Docker Compose at the end:</p>
 <pre class="highlight"><code class="language-bash">sudo ./scripts/pi-setup.sh --iface wlan0 --run-compose</code></pre>
-<p>If you use the script, it handles the hostapd/dnsmasq config, static IP, and offline rules. You can skip to the test section.</p>
+<p>Set the Wi-Fi country while you are at it, or Raspberry Pi OS keeps the radio soft-blocked:</p>
+<pre class="highlight"><code class="language-bash">sudo ./scripts/pi-setup.sh --iface wlan0 --country IT</code></pre>
+<p>If you use the script, it handles the hostapd/dnsmasq config, static IP, and offline rules. You can skip to the test section.
+On NetworkManager systems (Bookworm and later) it marks the AP interface as unmanaged and pins the gateway IP with a
+small <code>piratebox-ap-ip.service</code>, so NetworkManager and hostapd stop fighting over the same radio.
+Docker is only installed when you ask for <code>--run-compose</code>.</p>
 <h2 id="step-1-flash-the-os">Step 1: Flash the OS<a class="headerlink" href="#step-1-flash-the-os" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Download Raspberry Pi OS Lite (64-bit).</li>
@@ -224,10 +233,15 @@ static ip_address=10.0.0.1/24
 nohook wpa_supplicant
 EOF
 sudo systemctl restart dhcpcd</code></pre>
-<p>Option B (NetworkManager):</p>
-<pre class="highlight"><code class="language-bash">sudo nmcli dev set wlan0 managed yes
-sudo nmcli con add type wifi ifname wlan0 con-name piratebox-ap autoconnect yes ssid PirateBox
-sudo nmcli con modify piratebox-ap ipv4.addresses 10.0.0.1/24 ipv4.method manual</code></pre>
+<p>Option B (NetworkManager, the default since Bookworm). Tell NetworkManager to leave the radio to hostapd,
+then pin the address yourself:</p>
+<pre class="highlight"><code class="language-bash">sudo tee /etc/NetworkManager/conf.d/99-piratebox.conf &gt;/dev/null &lt;&lt;'EOF'
+[keyfile]
+unmanaged-devices=interface-name:wlan0
+EOF
+sudo systemctl restart NetworkManager
+sudo ip addr replace 10.0.0.1/24 dev wlan0</code></pre>
+<p>The <code>ip addr</code> line does not survive a reboot; <code>scripts/pi-setup.sh</code> installs a tiny unit that does it at boot.</p>
 <ol>
 <li>Configure hostapd:</li>
 </ol>

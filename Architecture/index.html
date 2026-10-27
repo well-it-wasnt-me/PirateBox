@@ -56,6 +56,10 @@
                 <li class="toctree-l1"><a class="reference internal" href="../Prebuilt-Image/">Prebuilt Image</a>
                 </li>
               </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Pi-Zero-W/">Pi Zero W Edition</a>
+                </li>
+              </ul>
               <ul class="current">
                 <li class="toctree-l1 current"><a class="reference internal current" href="#">Architecture</a>
     <ul class="current">
@@ -68,6 +72,8 @@
     <li class="toctree-l2"><a class="reference internal" href="#captive-portal-behavior">Captive portal behavior</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#optional-e-paper-status">Optional e-Paper status</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#pi-zero-w-edition">Pi Zero W edition</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#what-not-to-expect">What not to expect</a>
     </li>
@@ -151,7 +157,10 @@
 <h2 id="captive-portal-behavior">Captive portal behavior<a class="headerlink" href="#captive-portal-behavior" title="Permanent link">&para;</a></h2>
 <p>The app answers common OS connectivity checks and redirects them to <code>/captive</code>. The acknowledgment cookie keeps devices from looping forever. It is a small lie to stop a bigger annoyance.</p>
 <h2 id="optional-e-paper-status">Optional e-Paper status<a class="headerlink" href="#optional-e-paper-status" title="Permanent link">&para;</a></h2>
-<p>The <code>scripts/epaper_hat.py</code> script reads system stats and PirateBox counts, then renders them to a 2.7" e-Paper HAT. It tries multiple driver libraries because hardware vendors are not required to coordinate their choices.</p>
+<p>The <code>scripts/epaper_hat.py</code> script reads system stats and PirateBox counts, then renders them to a 2.7" e-Paper HAT or a 2.13" tri-color one. It tries multiple driver libraries because hardware vendors are not required to coordinate their choices.</p>
+<p>Pages draw on a paletted canvas (black, white, red) that gets split into one or two 1-bit layers at the end, so the same renderers serve mono and tri-color panels. Button callbacks only flip flags; the main loop owns the SPI bus.</p>
+<h2 id="pi-zero-w-edition">Pi Zero W edition<a class="headerlink" href="#pi-zero-w-edition" title="Permanent link">&para;</a></h2>
+<p><code>scripts/zero/</code> holds a dedicated installer, an image builder, and a first-boot unit for the Pi Zero W. The installer pulls everything from apt (no pip, no compilers), and the image builder runs that same installer inside the image under qemu, so the resulting card boots offline. See <a href="../Pi-Zero-W/">Pi Zero W Edition</a>.</p>
 <h2 id="what-not-to-expect">What not to expect<a class="headerlink" href="#what-not-to-expect" title="Permanent link">&para;</a></h2>
 <ul>
 <li>No external API calls.</li>
@@ -162,7 +171,7 @@
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../Prebuilt-Image/" class="btn btn-neutral float-left" title="Prebuilt Image"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../Pi-Zero-W/" class="btn btn-neutral float-left" title="Pi Zero W Edition"><span class="icon icon-circle-arrow-left"></span> Previous</a>
         <a href="../Configuration/" class="btn btn-neutral float-right" title="Configuration">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
@@ -190,7 +199,7 @@
         </span>
     
     
-      <span><a href="../Prebuilt-Image/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../Pi-Zero-W/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
       <span><a href="../Configuration/" style="color: #fcfcfc">Next &raquo;</a></span>

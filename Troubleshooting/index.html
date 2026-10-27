@@ -57,6 +57,10 @@
                 </li>
               </ul>
               <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../Pi-Zero-W/">Pi Zero W Edition</a>
+                </li>
+              </ul>
+              <ul>
                 <li class="toctree-l1"><a class="reference internal" href="../Architecture/">Architecture</a>
                 </li>
               </ul>
@@ -86,6 +90,8 @@
     <li class="toctree-l2"><a class="reference internal" href="#chat-messages-do-not-appear">Chat messages do not appear</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#the-e-paper-display-is-blank">The e-Paper display is blank</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#pi-zero-w-edition-problems">Pi Zero W edition problems</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#you-want-it-online">You want it online</a>
     </li>
@@ -180,6 +186,9 @@ sudo systemctl start piratebox-firstboot.service</code></pre>
 <li>Run the script manually: <code>sudo ./scripts/epaper_hat.py --debug</code>.</li>
 <li>Install GPIO libraries: <code>sudo apt install python3-rpi-lgpio python3-spidev</code>.</li>
 </ul>
+<h2 id="pi-zero-w-edition-problems">Pi Zero W edition problems<a class="headerlink" href="#pi-zero-w-edition-problems" title="Permanent link">&para;</a></h2>
+<p>See the troubleshooting section in <a href="../Pi-Zero-W/">Pi Zero W Edition</a>. Short version: check
+<code>/var/log/piratebox-zero-firstboot.log</code>, then <code>journalctl -u hostapd -u piratebox-epaper -b</code>.</p>
 <h2 id="you-want-it-online">You want it online<a class="headerlink" href="#you-want-it-online" title="Permanent link">&para;</a></h2>
 <p>This is an offline-first project. If you must add internet, do so knowingly and accept that it defeats the point.</p>
               
