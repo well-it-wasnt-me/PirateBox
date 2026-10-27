@@ -81,6 +81,7 @@ fi
 
 STATIC_IP="${GATEWAY_IP}/${CIDR}"
 COUNTRY_CODE=${COUNTRY_CODE^^}
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -129,9 +130,27 @@ if command -v rfkill >/dev/null 2>&1; then
   # Raspberry Pi OS ships Wi-Fi soft-blocked until someone picks a country. Consider it picked.
   rfkill unblock wlan || true
 fi
-if [[ -n "${COUNTRY_CODE}" ]] && command -v raspi-config >/dev/null 2>&1; then
-  raspi-config nonint do_wifi_country "${COUNTRY_CODE}" || true
+if [[ -z "${COUNTRY_CODE}" ]]; then
+  echo "No Wi-Fi country code. The kernel falls back to the world regulatory domain: conservative, not personalised."
+elif command -v raspi-config >/dev/null 2>&1; then
+  if ! raspi-config nonint do_wifi_country "${COUNTRY_CODE}"; then
+    echo "raspi-config rejected country '${COUNTRY_CODE}'. It wants ISO 3166 codes (GB, not UK). Nothing was substituted."
+  fi
 fi
+
+enable_nm_radio() {
+  # NetworkManager re-applies its saved Wi-Fi switch to the kernel rfkill every time it starts,
+  # unmanaged devices included. Raspberry Pi OS ships that switch off until a country is set, which
+  # turned every boot after the first into a race between NetworkManager and hostapd.
+  local state=/var/lib/NetworkManager/NetworkManager.state
+  if command -v nmcli >/dev/null 2>&1; then
+    # Through NetworkManager itself, so its memory and its state file agree.
+    nmcli radio wifi on >/dev/null 2>&1 || true
+  fi
+  if [[ -f "${state}" ]] && grep -q '^WirelessEnabled=false' "${state}"; then
+    sed -i 's/^WirelessEnabled=false/WirelessEnabled=true/' "${state}"
+  fi
+}
 
 write_ap_ip_unit() {
   # Pin the gateway IP with a tiny unit instead of negotiating with a network manager.
@@ -140,7 +159,8 @@ write_ap_ip_unit() {
 [Unit]
 Description=PirateBox access point address on ${WIFI_IFACE}
 BindsTo=sys-subsystem-net-devices-${WIFI_IFACE}.device
-After=sys-subsystem-net-devices-${WIFI_IFACE}.device
+# NetworkManager rewrites rfkill when it starts. Unblocking before it shows up is unblocking for nobody.
+After=sys-subsystem-net-devices-${WIFI_IFACE}.device NetworkManager.service
 Before=hostapd.service dnsmasq.service
 
 [Service]
@@ -170,6 +190,7 @@ EOF
     nmcli connection delete piratebox-ap >/dev/null 2>&1 || true
     nmcli device disconnect "${WIFI_IFACE}" >/dev/null 2>&1 || true
   fi
+  enable_nm_radio
   systemctl restart NetworkManager || true
   write_ap_ip_unit
 elif unit_on dhcpcd && [[ -f /etc/dhcpcd.conf ]]; then
@@ -240,10 +261,40 @@ if command -v iptables >/dev/null 2>&1 && ip link show "${LAN_IFACE}" >/dev/null
     iptables -A FORWARD -i "${LAN_IFACE}" -o "${WIFI_IFACE}" -j DROP
 fi
 
-systemctl enable hostapd dnsmasq
-systemctl restart hostapd dnsmasq
+write_ap_health_unit() {
+  # A per-boot check that asks the radio, not the exit codes. Bounded, so it cannot loop forever.
+  install -m 755 "${SCRIPT_DIR}/piratebox-ap-health.sh" /usr/local/sbin/piratebox-ap-health
+  cat <<EOF > /etc/systemd/system/piratebox-ap-health.service
+# PirateBox access point health check. Managed by scripts/pi-setup.sh.
+[Unit]
+Description=PirateBox access point health check on ${WIFI_IFACE}
+After=NetworkManager.service piratebox-ap-ip.service hostapd.service dnsmasq.service
+# Never second-guess provisioning while it is still running.
+After=piratebox-zero-firstboot.service piratebox-firstboot.service
 
-echo "PirateBox AP is up on ${WIFI_IFACE}. SSID: ${SSID}."
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/piratebox-ap-health --iface ${WIFI_IFACE} --address ${STATIC_IP}
+TimeoutStartSec=15min
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  systemctl daemon-reload
+  systemctl enable piratebox-ap-health.service
+}
+
+systemctl enable hostapd dnsmasq
+# A failed start is the health check's problem now: it retries, logs and reports instead of aborting setup.
+systemctl restart hostapd dnsmasq || echo "hostapd or dnsmasq did not start cleanly. The health check will have a word."
+write_ap_health_unit
+
+if /usr/local/sbin/piratebox-ap-health --iface "${WIFI_IFACE}" --address "${STATIC_IP}"; then
+  echo "PirateBox AP is up on ${WIFI_IFACE}. SSID: ${SSID}. Checked, not assumed."
+else
+  echo "PirateBox AP is configured on ${WIFI_IFACE} but is NOT broadcasting. See /var/log/piratebox-ap-health.log."
+fi
 if [[ "${RUN_COMPOSE}" == "1" ]]; then
   echo "Web UI: http://${GATEWAY_IP}:8080"
 else
@@ -271,7 +322,6 @@ if [[ "${RUN_COMPOSE}" == "1" ]]; then
   elif [[ -f "${PWD}/docker-compose.yml" ]]; then
     do_compose "${PWD}"
   else
-    SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
     do_compose "${SCRIPT_DIR}/.."
   fi
 fi

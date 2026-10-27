@@ -5,7 +5,8 @@
 # Wi-Fi name people will see. Up to 32 characters; the e-paper is not a billboard.
 SSID=PirateBox
 
-# Two-letter Wi-Fi country code (IT, US, DE, ...). Leave it empty and the radio may sulk.
+# Two-letter ISO Wi-Fi country code (IT, US, DE, GB - not UK). Empty still works, on the kernel's
+# cautious world settings; set it anyway, the radio is in your country, not in "the world".
 COUNTRY=
 
 # E-paper rotation in degrees: 0 or 180. Try 180 if the dashboard reads upside down.

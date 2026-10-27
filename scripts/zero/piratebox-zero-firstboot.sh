@@ -72,6 +72,12 @@ esac
 
 mkdir -p /var/lib/piratebox/data/files /var/lib/piratebox/tmp
 
+# Tell the e-paper this is provisioning, not a failure. /run forgets it on reboot, which is the point.
+# If provisioning dies halfway, say so, instead of leaving "starting" up there until the heat death.
+mkdir -p /run/piratebox
+printf 'STATE=checking\nREASON=provisioning\n' > /run/piratebox/ap-status
+trap 'rc=$?; if (( rc != 0 )); then printf "STATE=offline\nREASON=provisioning-failed\n" > /run/piratebox/ap-status; fi' EXIT
+
 echo "Starting the web app first, so a broken radio does not take the whole box down with it."
 systemctl enable piratebox.service
 systemctl restart piratebox.service
@@ -94,9 +100,14 @@ if [[ -n "${COUNTRY}" ]]; then
 fi
 "${INSTALL_DIR}/scripts/pi-setup.sh" "${SETUP_ARGS[@]}"
 
+# The marker means "configuration is on disk", so make sure it is, before claiming so. Whether the
+# radio is actually broadcasting is piratebox-ap-health's job, on this boot and every one after it.
+sync
 mkdir -p "$(dirname "${MARKER}")"
 touch "${MARKER}"
+sync
 
 systemctl disable piratebox-zero-firstboot.service || true
 
-echo "First boot provisioning complete. Join '${SSID}' and open http://10.0.0.1/"
+echo "First boot provisioning complete. From now on piratebox-ap-health.service checks the AP on every boot."
+echo "Join '${SSID}' and open http://10.0.0.1/"
