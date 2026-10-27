@@ -25,6 +25,14 @@ DEFAULT_LOGO = ROOT_DIR / "app" / "static" / "images" / "PirateBoxLogo2.png"
 DEFAULT_BUTTON_PINS = "5,6,13,19"
 DEFAULT_PAGES = "status,network,piratebox"
 HOSTAPD_CONF = Path("/etc/hostapd/hostapd.conf")
+# Written by piratebox-ap-health. In /run, so a previous boot's opinion cannot leak into this one.
+AP_STATUS_FILE = Path("/run/piratebox/ap-status")
+SYSFS = Path("/sys")
+PROC_UDP = Path("/proc/net/udp")
+# The Zero edition keeps its per-boot AP verdict on the FAT partition, where any laptop can read it.
+BOOT_CONFIGS = (Path("/boot/firmware/piratebox.txt"), Path("/boot/piratebox.txt"))
+# While not ready, sample this often. Sampling is free; it is the refreshes the panel minds.
+STARTUP_POLL = 10
 PAGE_HINTS = {"status": "STAT", "network": "NET", "piratebox": "BOX", "dashboard": "DASH"}
 
 # Drivers fetched by the installers live here, next to the regret.
@@ -493,6 +501,21 @@ class Stats:
     chats: int = 0
     clients: Optional[int] = None
     ssid: str = ""
+    # "up", "starting" or "offline". ip is only filled in when the AP is really up.
+    ap_state: str = "up"
+    ap_reason: str = ""
+    # Boot checklist as (label, "ok" | "wait" | "fail"); empty means nothing to report.
+    checks: tuple[tuple[str, str], ...] = ()
+    provisioning: bool = False
+    log_hint: str = ""
+
+
+@dataclass
+class ApStatus:
+    """What the radio is doing, according to the kernel rather than to hope."""
+    state: str
+    ip: str
+    reason: str
 
 
 @dataclass
@@ -590,7 +613,8 @@ def _stats_changed(prev: Optional[Stats], curr: Stats, policy: RefreshPolicy) ->
                 return True
         elif abs(curr.clients - prev.clients) >= policy.count_delta:
             return True
-    if policy.ip_change and curr.ip != prev.ip:
+    network = (curr.ip, curr.ap_state, curr.ap_reason, curr.checks, curr.provisioning)
+    if policy.ip_change and network != (prev.ip, prev.ap_state, prev.ap_reason, prev.checks, prev.provisioning):
         return True
     return False
 
@@ -652,10 +676,15 @@ def _read_disk(path: Path) -> tuple[int, int]:
     return used, total
 
 
+def _read_uptime_seconds() -> float:
+    """Return seconds since boot, the one clock a Zero without an RTC gets right."""
+    with open("/proc/uptime", "r", encoding="utf-8") as handle:
+        return float(handle.read().split()[0])
+
+
 def _read_uptime() -> str:
     """Return uptime formatted for small screens."""
-    with open("/proc/uptime", "r", encoding="utf-8") as handle:
-        seconds = float(handle.read().split()[0])
+    seconds = _read_uptime_seconds()
     minutes, _ = divmod(int(seconds), 60)
     hours, minutes = divmod(minutes, 60)
     days, hours = divmod(hours, 24)
@@ -666,18 +695,247 @@ def _read_uptime() -> str:
     return f"{minutes}m"
 
 
-def _read_ip() -> str:
-    """Attempt to find a local IP without committing to the truth."""
+def _read_iface_ipv4(iface: str) -> str:
+    """Return the first IPv4 address on the AP interface, or nothing. Never /etc/hosts fan fiction."""
     try:
-        result = subprocess.check_output(["hostname", "-I"], text=True, stderr=subprocess.DEVNULL).strip()
-        if result:
-            return result.split()[0]
+        output = subprocess.check_output(
+            ["ip", "-4", "-o", "addr", "show", "dev", iface],
+            text=True,
+            stderr=subprocess.DEVNULL,
+            timeout=5,
+        )
     except Exception:
+        return ""
+    for line in output.splitlines():
+        parts = line.split()
+        if "inet" in parts:
+            index = parts.index("inet")
+            if index + 1 < len(parts):
+                return parts[index + 1].split("/", 1)[0]
+    return ""
+
+
+def _rfkill_blocked(net_dir: Path) -> bool:
+    """True when the interface's own radio switch is off, soft or hard."""
+    for switch in sorted(net_dir.glob("phy80211/rfkill*/soft")) + sorted(net_dir.glob("phy80211/rfkill*/hard")):
+        try:
+            if switch.read_text().strip() == "1":
+                return True
+        except OSError:
+            continue
+    return False
+
+
+def _iface_up(net_dir: Path) -> bool:
+    """Check IFF_UP. An address on a downed interface is a phone number nobody answers."""
+    try:
+        return bool(int((net_dir / "flags").read_text().strip(), 16) & 0x1)
+    except (OSError, ValueError):
+        return False
+
+
+def _iw_broadcasting(iface: str) -> Optional[bool]:
+    """True when iw sees an AP with an SSID, False when it does not, None when iw is not talking."""
+    try:
+        output = subprocess.check_output(
+            ["iw", "dev", iface, "info"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+            timeout=5,
+        )
+    except Exception:
+        return None
+    lines = [line.strip() for line in output.splitlines()]
+    return "type AP" in lines and any(line.startswith("ssid ") for line in lines)
+
+
+def _read_health_file(status_file: Path) -> dict[str, str]:
+    """Read piratebox-ap-health's KEY=value status file. Missing means nobody has said anything yet."""
+    values: dict[str, str] = {}
+    try:
+        for line in status_file.read_text(encoding="utf-8", errors="replace").splitlines():
+            if "=" in line:
+                key, value = line.split("=", 1)
+                values[key.strip()] = value.strip()
+    except OSError:
         pass
+    return values
+
+
+def _within_grace(grace: Optional[float]) -> bool:
+    """True during the first minutes after boot, when 'not yet' is still an acceptable answer."""
+    if grace is None:
+        grace = float(_read_env_int("PIRATEBOX_EPD_AP_GRACE", 300))
     try:
-        return socket.gethostbyname(socket.gethostname())
-    except Exception:
-        return "unknown"
+        return _read_uptime_seconds() < grace
+    except (OSError, ValueError, IndexError):
+        return False
+
+
+def _still_starting(health: dict[str, str], grace: Optional[float] = None) -> bool:
+    """Is someone still working on the AP? A health verdict, either way, ends the benefit of the doubt."""
+    state = health.get("STATE", "")
+    if state == "checking":
+        return True
+    if state:
+        return False
+    return _within_grace(grace)
+
+
+@dataclass
+class ApProbe:
+    """Raw facts about the AP interface, before anyone draws conclusions."""
+    present: bool
+    blocked: bool
+    up: bool
+    ip: str
+    broadcasting: Optional[bool]
+
+
+def _probe_ap(iface: str, sysfs: Path = SYSFS) -> ApProbe:
+    """Ask sysfs, ip and iw about the AP interface, once per sample."""
+    net_dir = sysfs / "class" / "net" / iface
+    if not net_dir.is_dir():
+        return ApProbe(present=False, blocked=False, up=False, ip="", broadcasting=False)
+    blocked = _rfkill_blocked(net_dir)
+    up = _iface_up(net_dir)
+    broadcasting = _iw_broadcasting(iface) if up and not blocked else False
+    return ApProbe(present=True, blocked=blocked, up=up, ip=_read_iface_ipv4(iface), broadcasting=broadcasting)
+
+
+def _read_ap_status(
+    iface: str,
+    sysfs: Path = SYSFS,
+    status_file: Optional[Path] = None,
+    grace: Optional[float] = None,
+    probe: Optional[ApProbe] = None,
+) -> ApStatus:
+    """Decide whether the AP is up, still starting, or offline, and say why."""
+    probe = probe or _probe_ap(iface, sysfs)
+    reason = ""
+    if not probe.present:
+        reason = f"NO {iface.upper()}"
+    elif probe.blocked:
+        reason = "RFKILL"
+    elif not probe.up:
+        reason = f"{iface.upper()} DOWN"
+    elif not probe.ip:
+        reason = "NO IP"
+    elif probe.broadcasting is False:
+        reason = "NOT BROADCASTING"
+    if not reason:
+        return ApStatus(state="up", ip=probe.ip, reason="")
+
+    # Down is down; the only question is whether anyone is still working on it.
+    health = _read_health_file(status_file or AP_STATUS_FILE)
+    state = "starting" if _still_starting(health, grace) else "offline"
+    return ApStatus(state=state, ip="", reason=reason)
+
+
+def _dhcp_listening(proc_udp: Path = PROC_UDP) -> Optional[bool]:
+    """True when something listens on UDP 67. On a PirateBox that is dnsmasq or nobody."""
+    try:
+        lines = proc_udp.read_text().splitlines()[1:]
+    except OSError:
+        return None
+    for line in lines:
+        parts = line.split()
+        if len(parts) > 1 and parts[1].rsplit(":", 1)[-1].upper() == "0043":
+            return True
+    return False
+
+
+def _web_port() -> int:
+    """Port the web app listens on, from the same PORT the app reads. 0 means do not check."""
+    raw = os.getenv("PIRATEBOX_EPD_WEB_PORT") or os.getenv("PORT") or "80"
+    try:
+        port = int(raw)
+    except ValueError:
+        return 80
+    return port if 0 < port < 65536 else 0
+
+
+def _web_answering(port: int) -> bool:
+    """Knock on the web app's door. Whether it answers is all we want to know, not what it says."""
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=1):
+            return True
+    except OSError:
+        return False
+
+
+def _startup_checks(
+    probe: ApProbe,
+    ap: ApStatus,
+    ssid: str,
+    dhcp: Optional[bool],
+    web: Optional[bool],
+    ap_pending: bool,
+    web_pending: bool,
+) -> tuple[tuple[str, str], ...]:
+    """The boot checklist as (label, ok|wait|fail). Waiting turns into failing once nobody is trying."""
+
+    def mark(ok: bool, pending: bool) -> str:
+        if ok:
+            return "ok"
+        return "wait" if pending else "fail"
+
+    wifi_ok = probe.present and not probe.blocked and probe.up and probe.broadcasting is not False
+    checks = [
+        ("RADIO", mark(probe.present and not probe.blocked, ap_pending)),
+        (f"WIFI {ssid}".strip(), mark(wifi_ok, ap_pending)),
+        (f"IP {probe.ip}" if probe.ip else "IP", mark(bool(probe.ip), ap_pending)),
+    ]
+    if dhcp is not None:
+        checks.append(("DHCP", mark(dhcp, ap_pending)))
+    if web is not None:
+        checks.append(("WEB", mark(web, web_pending)))
+    return tuple(checks)
+
+
+def _is_ready(stats: Stats) -> bool:
+    """Ready means a phone can join, get a lease and load the page. Anything less is a work in progress."""
+    return stats.ap_state == "up" and all(state == "ok" for _, state in stats.checks)
+
+
+def _startup_text(stats: Stats) -> tuple[str, str, str]:
+    """Pick the title, the why line and the hint for the not-ready screen."""
+    failing = {label.split()[0] for label, state in stats.checks if state == "fail"}
+    if stats.provisioning:
+        return "FIRST BOOT SETUP", "A FEW MINUTES ON A ZERO. MAKE TEA.", "THE URL SHOWS UP HERE WHEN READY."
+    if stats.ap_state == "offline":
+        why = f"WHY {stats.ap_reason}" if stats.ap_reason else ""
+        return "AP OFFLINE", why, stats.log_hint or "RUN: sudo piratebox-ap-health"
+    if "DHCP" in failing:
+        return "DHCP DOWN", "PHONES JOIN, NOBODY GETS AN ADDRESS.", "CHECK: systemctl status dnsmasq"
+    if "WEB" in failing:
+        return "WEB APP DOWN", "WI-FI WORKS, THE PAGE DOES NOT.", "LOG: journalctl -u piratebox"
+    return "STARTING UP", "", "THE URL SHOWS UP HERE WHEN READY."
+
+
+def _ready_bypass(enabled: bool, announced: bool, stats: Stats, last_drawn: Optional[Stats]) -> bool:
+    """Draw the first 'ready' frame now instead of making people stare at 'starting' for 3 more minutes.
+
+    Once per service start, and only for the not-ready -> ready flip. Waveshare's 180 seconds still
+    rule everything else, so the panel gets one exception per boot, not a habit.
+    """
+    return (
+        enabled
+        and not announced
+        and last_drawn is not None
+        and _is_ready(stats)
+        and not _is_ready(last_drawn)
+    )
+
+
+def _ap_label(stats: Stats) -> str:
+    """The line that replaces the URL when there is no URL worth printing."""
+    return "AP STARTING" if stats.ap_state == "starting" else "AP OFFLINE"
+
+
+def _has_ap_ip(stats: Stats) -> bool:
+    """Only an AP that is up gets to advertise an address."""
+    return stats.ap_state == "up" and bool(stats.ip)
 
 
 def _read_ssid(conf_path: Path = HOSTAPD_CONF) -> str:
@@ -1040,7 +1298,10 @@ def _render_status(
 
     draw.text((x, y), f"UP {stats.uptime}", font=fonts.small, fill=BLACK)
     y += _font_height(fonts.small) + layout.gutter
-    draw.text((x, y), f"IP {stats.ip}", font=fonts.small, fill=BLACK)
+    if _has_ap_ip(stats):
+        draw.text((x, y), f"IP {stats.ip}", font=fonts.small, fill=BLACK)
+    else:
+        draw.text((x, y), f"{_ap_label(stats)} {stats.ap_reason}".strip(), font=fonts.small, fill=RED)
 
 
 def _render_network(
@@ -1059,12 +1320,16 @@ def _render_network(
     draw.text((layout.margin, y), f"HOST {hostname}", font=fonts.small, fill=BLACK)
     y += _font_height(fonts.small) + layout.gutter
 
-    ip_text = stats.ip if stats.ip else "unknown"
-    y = _center_text(draw, image.width, y, ip_text, fonts.huge)
-    y += layout.gutter
-
-    http_line = f"http://{ip_text}" if ip_text != "unknown" else "http://pirate.box"
-    draw.text((layout.margin, y), f"HTTP {http_line}", font=fonts.small, fill=BLACK)
+    if _has_ap_ip(stats):
+        y = _center_text(draw, image.width, y, stats.ip, fonts.huge)
+        y += layout.gutter
+        draw.text((layout.margin, y), f"HTTP http://{stats.ip}", font=fonts.small, fill=BLACK)
+    else:
+        label = _ap_label(stats)
+        label_font = _fit_font(label, image.width - 2 * layout.margin, fonts.huge, fonts.large, fonts.medium)
+        y = _center_text(draw, image.width, y, label, label_font)
+        y += layout.gutter
+        draw.text((layout.margin, y), f"WHY {stats.ap_reason or '-'}", font=fonts.small, fill=RED)
     y += _font_height(fonts.small) + layout.gutter
     draw.text((layout.margin, y), "INTERNET: NO, BY DESIGN.", font=fonts.small, fill=BLACK)
 
@@ -1086,6 +1351,65 @@ def _render_piratebox(image: Image.Image, stats: Stats, fonts: Fonts, layout: La
     draw.text((layout.margin, y), "LOCAL ONLY. NO CLOUD.", font=fonts.small, fill=BLACK)
 
 
+def _ellipsize(text: str, font: ImageFont.ImageFont, max_width: int) -> str:
+    """Trim text until it fits. A 32-character SSID and a 120-pixel column will not negotiate."""
+    if _text_width(font, text) <= max_width:
+        return text
+    while text and _text_width(font, text + "...") > max_width:
+        text = text[:-1]
+    return text + "..."
+
+
+def _render_startup(
+    image: Image.Image,
+    stats: Stats,
+    fonts: Fonts,
+    layout: Layout,
+) -> None:
+    """Render the not-ready screen: what is done, what is pending, and what to do about the rest."""
+    draw = ImageDraw.Draw(image)
+    width, height = image.size
+    margin, gutter = layout.margin, layout.gutter
+    name = os.getenv("PIRATEBOX_NAME", "PirateBox").upper()
+    _draw_header(draw, width, name, f"UP {stats.uptime}", fonts, layout, fill=RED)
+    _draw_footer(draw, width, height, fonts, layout)
+    title, why, hint = _startup_text(stats)
+    full_width = width - 2 * margin
+
+    y = layout.header_h + gutter
+    title_font = _fit_font(title, full_width, fonts.bold, fonts.medium, fonts.small)
+    draw.text((margin, y), title, font=title_font, fill=RED)
+    y += _font_height(title_font) + gutter
+
+    # Two columns of checkboxes: black is done, hollow is waiting, red is broken. No glyphs needed.
+    row_h = _font_height(fonts.small) + gutter
+    box = max(5, _font_height(fonts.small) - 4)
+    col_w = full_width // 2
+    for index, (label, state) in enumerate(stats.checks):
+        x = margin + (index % 2) * col_w
+        row_y = y + (index // 2) * row_h
+        box_y = row_y + (_font_height(fonts.small) - box) // 2 + 1
+        if state == "ok":
+            draw.rectangle((x, box_y, x + box, box_y + box), fill=BLACK)
+        elif state == "fail":
+            draw.rectangle((x, box_y, x + box, box_y + box), fill=RED)
+        else:
+            draw.rectangle((x, box_y, x + box, box_y + box), outline=BLACK, fill=WHITE)
+        text_x = x + box + gutter
+        text = _ellipsize(label, fonts.small, col_w - box - gutter * 2)
+        draw.text((text_x, row_y), text, font=fonts.small, fill=RED if state == "fail" else BLACK)
+    y += ((len(stats.checks) + 1) // 2) * row_h
+
+    if why:
+        draw.text((margin, y), _ellipsize(why, fonts.small, full_width), font=fonts.small,
+                  fill=BLACK if stats.provisioning else RED)
+        y += row_h
+
+    hint_y = max(y, height - layout.footer_h - margin - _font_height(fonts.tiny))
+    if hint and hint_y + _font_height(fonts.tiny) <= height - layout.footer_h:
+        draw.text((margin, hint_y), _ellipsize(hint, fonts.tiny, full_width), font=fonts.tiny, fill=BLACK)
+
+
 def _render_dashboard(
     image: Image.Image,
     stats: Stats,
@@ -1094,6 +1418,10 @@ def _render_dashboard(
     layout: Layout,
 ) -> None:
     """Render everything on one page, for small screens with no buttons and no patience."""
+    if not _is_ready(stats):
+        # Counts and disk bars can wait. Until a phone can actually use the box, say what is missing.
+        _render_startup(image, stats, fonts, layout)
+        return
     draw = ImageDraw.Draw(image)
     width, height = image.size
     margin, gutter = layout.margin, layout.gutter
@@ -1111,8 +1439,9 @@ def _render_dashboard(
     small_h = _font_height(fonts.small)
 
     # The address is the only line anyone reads, so it gets the bold red treatment.
-    has_ip = stats.ip and stats.ip != "unknown"
-    url = f"http://{stats.ip}" if has_ip else "NO IP YET"
+    # When the AP is down, that line says so instead of printing an address nobody can reach.
+    has_ip = _has_ap_ip(stats)
+    url = f"http://{stats.ip}" if has_ip else _ap_label(stats)
     if has_ip and _text_width(fonts.bold, url) > column:
         url = stats.ip
     url_font = _fit_font(url, column, fonts.bold, fonts.medium, fonts.small)
@@ -1123,8 +1452,12 @@ def _render_dashboard(
     draw.text((margin, y), wifi, font=_fit_font(wifi, column, fonts.small, fonts.tiny), fill=BLACK)
     y += small_h + gutter
 
-    online = "-" if stats.clients is None else str(stats.clients)
-    draw.text((margin, y), f"ONLINE {online}", font=fonts.small, fill=BLACK)
+    if has_ip:
+        online = "-" if stats.clients is None else str(stats.clients)
+        draw.text((margin, y), f"ONLINE {online}", font=fonts.small, fill=BLACK)
+    else:
+        why = f"WHY {stats.ap_reason or '-'}"
+        draw.text((margin, y), why, font=_fit_font(why, column, fonts.small, fonts.tiny), fill=RED)
     y += small_h + gutter
     if logo:
         y = max(y, layout.header_h + gutter + logo.height + gutter)
@@ -1224,7 +1557,23 @@ def _collect_stats(db_path: Path, data_path: Path, prev_cpu: Optional[tuple[int,
     mem_used, mem_total = _read_mem()
     disk_used, disk_total = _read_disk(data_path)
     uptime = _read_uptime()
-    ip = _read_ip()
+    iface = os.getenv("PIRATEBOX_WIFI_IFACE", "wlan0")
+    probe = _probe_ap(iface)
+    ap = _read_ap_status(iface, probe=probe)
+    ssid = _read_ssid()
+    health = _read_health_file(AP_STATUS_FILE)
+    provisioning = health.get("STATE") == "checking" and health.get("REASON") == "provisioning"
+    port = _web_port()
+    checks = _startup_checks(
+        probe,
+        ap,
+        ssid,
+        dhcp=_dhcp_listening(),
+        web=_web_answering(port) if port else None,
+        ap_pending=_still_starting(health),
+        web_pending=provisioning or _within_grace(None),
+    )
+    log_hint = "SD CARD: piratebox-ap-status.txt" if any(path.exists() for path in BOOT_CONFIGS) else ""
     files, threads, posts, chats = _read_counts(db_path)
     timestamp = time.strftime("%H:%M")
 
@@ -1237,14 +1586,19 @@ def _collect_stats(db_path: Path, data_path: Path, prev_cpu: Optional[tuple[int,
             disk_used=disk_used,
             disk_total=disk_total,
             uptime=uptime,
-            ip=ip,
+            ip=ap.ip,
             files=files,
             threads=threads,
             posts=posts,
             timestamp=timestamp,
             chats=chats,
-            clients=_read_clients(os.getenv("PIRATEBOX_WIFI_IFACE", "wlan0")),
-            ssid=_read_ssid(),
+            clients=_read_clients(iface),
+            ssid=ssid,
+            ap_state=ap.state,
+            ap_reason=ap.reason,
+            checks=checks,
+            provisioning=provisioning,
+            log_hint=log_hint,
         ),
         cpu_state,
     )
@@ -1308,6 +1662,7 @@ def main() -> None:
 
     full_refresh_every = max(0, _read_env_int("PIRATEBOX_EPD_FULL_REFRESH_EVERY", 10))
     max_age = max(0, _read_env_int("PIRATEBOX_EPD_MAX_AGE", 3600))
+    ready_refresh = os.getenv("PIRATEBOX_EPD_READY_REFRESH", "1") != "0"
     refresh_policy = _parse_refresh_policy()
     pages = _parse_pages(args.pages)
     page_names = [name for name, _ in pages]
@@ -1369,6 +1724,7 @@ def main() -> None:
     last_drawn: Optional[Stats] = None
     last_page: Optional[int] = None
     last_draw_at: Optional[float] = None
+    ready_announced = False
 
     try:
         # Main loop: keep the paper fresh so it does not look like last week's news.
@@ -1388,7 +1744,7 @@ def main() -> None:
 
             stats, prev_cpu = _collect_stats(db_path, data_path, prev_cpu)
             page_name, renderer = pages[state.page]
-            forced = state.force_refresh
+            forced = state.force_refresh or _ready_bypass(ready_refresh, ready_announced, stats, last_drawn)
             age = None if last_draw_at is None else time.monotonic() - last_draw_at
             _debug(args.debug, f"Render page={page_name} force={forced} sleeping={state.sleeping}")
 
@@ -1420,9 +1776,11 @@ def main() -> None:
                 last_page = state.page
                 last_draw_at = time.monotonic()
                 draw_count += 1
+                ready_announced = ready_announced or _is_ready(stats)
                 if cycle_pages:
                     state.page = (state.page + 1) % len(pages)
-            _wait(buttons, wake, args.interval)
+            # Look more often while the box is still getting ready, so "ready" is noticed promptly.
+            _wait(buttons, wake, args.interval if _is_ready(stats) else min(args.interval, STARTUP_POLL))
     except KeyboardInterrupt:
         pass
     finally:
